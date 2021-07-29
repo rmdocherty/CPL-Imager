@@ -36,7 +36,7 @@ try:
     import Queue as queue
 except ImportError:
     import queue
-
+from colourmapper import ColourMapper
 
 class LiveViewCanvas(tk.Canvas):
     """LiveViewCanvas.
@@ -54,10 +54,13 @@ class LiveViewCanvas(tk.Canvas):
         tk.Canvas.__init__(self, parent)
         self.pack()
         self._get_image()
+        self._cmap = ColourMapper("Raw")
 
     def _get_image(self):
         try:
-            image = self.image_queue.get_nowait()
+            image1 = self.image_queue1.get_nowait() 
+            image2 = self.image_queue2.get_nowait()
+            image = self._cmap.colour_map(image1, image2)
             self._image = ImageTk.PhotoImage(master=self, image=image)
             if (self._image.width() != self._image_width) or (self._image.height() != self._image_height):
                 # resize the canvas to match the new image size

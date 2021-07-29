@@ -27,6 +27,9 @@ class ColourMapper():
         except (NameError, IOError, RuntimeError): # use defaults
             self._cmaps = {"Raw": ["Oranges", "Blues"], "g_em": "coolwarm", "DOCP": "plasma"}
 
+    def set_mode(self, mode): # so can set mode w/o re-initialising
+        self._mode = mode
+
     def _get_cmaps_from_config(self):
         """
         get_cmaps_from_config.
@@ -44,17 +47,17 @@ class ColourMapper():
         cmap_dict = {}
         with open("cmap_config.txt", "r") as configFile:
             lines = configFile.readlines()
-            for l in lines:
-                param_list = l.split(":")
+            for line in lines:
+                param_list = line.split(":")
                 temp_mode = param_list[0]
                 # remove extra spaces and newlines
                 temp_cmap = param_list[1].strip(" ").strip("\n")
                 if temp_mode == "Raw": #will need 2 here
-                    temp_cmap = temp_cmap.split(",") # assume comma separated
+                    temp_cmap = temp_cmap.split(",") #assume comma separated
                 cmap_dict[temp_mode] = temp_cmap
         return cmap_dict
 
-    def _colour_map(self, img1, img2, mode, debug=False):
+    def colour_map(self, img1, img2, debug=False):
         """
         colour_map.
 
@@ -71,27 +74,31 @@ class ColourMapper():
             before cmapping
         img2 : NP ARRAY
             Same as img1 but RCPL from camera 2
-        mode : STR
-            String that determines which mode the cmapper works in. Determined
-            by control thread.
 
         Returns
         -------
             A PIL Image Object
 
         """
-        if mode == "Raw":
-            cmap1, cmap2 = self._cmaps["Raw"] # unpack
-            cmapped_img1 = self._single_cmap(img1, cmap1)
-            cmapped_img2 = self._single_cmap(img2, cmap2)
-            mapped = np.hstack((cmapped_img1, cmapped_img2)) # put images 'side-by-side' NB - will this work if diff sizes??
+        if self._mode == "Raw":
+            cmap1, cmap2 = self._cmaps["Raw"] #unpack
+            if img1 is not None and img2 is not None: #use this case 1st as most common!
+                cmapped_img1 = self._single_cmap(img1, cmap1)
+                cmapped_img2 = self._single_cmap(img2, cmap2)
+                mapped = np.hstack((cmapped_img1, cmapped_img2)) #put images 'side-by-side' NB - will this work if diff sizes??
+            elif img1 is not None and img2 is None: #single image modes
+                mapped = self._single_cmap(img1, cmap1)
+            elif img1 is None and img2 is not None:
+                mapped = self._single_cmap(img2, cmap2)
+            else:
+                raise Exception("Must supply at least 1 image!")
 
-        elif mode == "g_em":
+        elif self._mode == "g_em":
             cmap = self._cmaps["g_em"]
-            g_em = 2 * (img1 - img2) / (img1 + img2) # from equation
+            g_em = 2 * (img1 - img2) / (img1 + img2) #from equation
             mapped = self._single_cmap(g_em, cmap)
 
-        elif mode == "DOCP":
+        elif self._mode == "DOCP":
             cmap = self._cmaps["DOCP"]
             DOCP = (img1 + img2)
             mapped = self._single_cmap(DOCP, cmap)
@@ -99,7 +106,7 @@ class ColourMapper():
         else:
             raise Exception("Invalid mode supplied, check cmap_config file")
 
-        out = Image.fromarray(mapped) # convert to PIL Image
+        out = Image.fromarray(mapped) #convert to PIL Image
         if debug is True:
             out.show() #see what's going on
         return out
@@ -122,19 +129,6 @@ class ColourMapper():
         out_im : PIL IMAGE
             Colour mapped PIL image for use in the tkinter widget.
         """
-        cmap = cm.get_cmap(cmap_string) # grab cmap object from string
-        out_im = cmap(img, bytes=True) # bytes=True converts array into uint8 for fromarray to use
+        cmap = cm.get_cmap(cmap_string) #grab cmap object from string
+        out_im = cmap(img, bytes=True) #bytes=True converts array into uint8 for fromarray to use
         return out_im
-
-
-# testing stuff here
-np.random.seed(1)
-
-IMG_WIDTH = 200
-IMG_HEIGHT = 200
-
-LCPL = np.random.random((IMG_HEIGHT, IMG_WIDTH))
-RCPL = np.random.random((IMG_HEIGHT, IMG_WIDTH))
-
-c = ColourMapper("test")
-c._colour_map(LCPL, RCPL, "Raw", debug=True)

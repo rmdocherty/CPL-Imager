@@ -6,46 +6,76 @@ Created on Wed Jul 28 13:10:19 2021
 @author: ronan
 """
 
-#DEPENDENCIES
+# DEPENDENCIES
 import numpy as np
-import matplotlib.pyplot as plt
-from matplotlib import cm #use 'coolwarm' ?
-#seed RNG
+from colourmapper import ColourMapper
+from live_view import LiveViewCanvas
+import queue
+import tkinter as tk
+import threading
+
+# Seed RNG
 np.random.seed(1)
 
-"""
-Given two mock np arrays with dtype=np.ushort that represent the images
-recieved on the two cameras, colourmap their respective polarisations and 
-create combined map. The images recieved from the cameras will be arrays
-containing values from 0 to 65,535 so may need to normalise this to 0 to 1
-assuming monochrome arrays where maximum value is maximum brightness.
-"""
+# %%
+class MockCamera(threading.Thread):
+    def __init__(self, on=True):
+        super(MockCamera, self).__init__()
+        self._image_queue = queue.Queue(maxsize=2)
+        self._cmapper = ColourMapper("Raw")
+        self._stop_event = threading.Event()
+        self._on = on
 
-IMG_WIDTH = 100
-IMG_HEIGHT = 100
+    def get_output_queue(self):
+        # type: (type(None)) -> queue.Queue
+        return self._image_queue
+
+    def stop(self):
+        self._stop_event.set()
+
+    def run(self):
+        while not self._stop_event.is_set():
+            try:
+                if self._on is True:
+                    LCPL = np.random.random((IMG_HEIGHT, IMG_WIDTH))
+                    pil_image = self._cmapper.colour_map(LCPL, None)
+                    self._image_queue.put_nowait(pil_image)
+                else:
+                    self._image_queue.put_nowait(None)
+            except queue.Full:
+                # No point in keeping this image around when the queue is full, let's skip to the next one
+                pass
+            except Exception as error:
+                print("Encountered error: {error}, image acquisition will stop.".format(error=error))
+                break
+        print("Image acquisition has stopped")
+
+# %% Static test of colour mapper ability
+c = ColourMapper("test")
+
+np.random.seed(1)
+
+IMG_WIDTH = 200
+IMG_HEIGHT = 200
 
 LCPL = np.random.random((IMG_HEIGHT, IMG_WIDTH))
-#assume RCPL is in 'other direction' 
 RCPL = np.random.random((IMG_HEIGHT, IMG_WIDTH))
 
-DOCP = (LCPL + RCPL) #magnitude of CPL
-g_em = 2 * (LCPL + -1 * RCPL) / DOCP #definition of g_em
+c = ColourMapper("Raw")
+c.colour_map(LCPL, RCPL, debug=True)
 
+# %%
+root = tk.Tk()
+root.title("Mock CPL")
+camera1 = MockCamera()
+camera_widget = LiveViewCanvas(parent=root, image_queue=camera1.get_output_queue())
+camera1.start()
 
-fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2)
-axes = [ax1, ax2, ax3, ax4]
-data = [LCPL, RCPL, g_em, DOCP]
-cmaps = ["Oranges", "Blues", "coolwarm", "plasma"]
-titles = ["LCPL", "RCPL", "g_em", "DOCP"]
+print("App starting")
+root.mainloop()
 
-for i in range(4):
-    a = axes[i]
-    cmap = cmaps[i]
-    title = titles[i]
-    d = data[i]
-    im = a.imshow(d, cmap=plt.get_cmap(cmap), interpolation='nearest')
-    a.axis('off')
-    fig.colorbar(im, ax=a)
-    a.set_title(title)
+print("Waiting for image acquisition thread to finish...")
+camera1.stop()
 
-plt.show()
+camera1.join()
+    
