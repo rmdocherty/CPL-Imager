@@ -38,12 +38,17 @@ except ImportError:
     import queue
 from colourmapper import ColourMapper
 
+
 class LiveViewCanvas(tk.Canvas):
     """LiveViewCanvas.
 
     This is a Tkinter Canvas object that can be reused in custom programs. The Canvas expects a parent Tkinter object and 
     an image queue. The image queue is a queue.Queue that it will pull images from, and is expected to hold PIL Image 
     objects that will be displayed to the canvas. It automatically adjusts its size based on the incoming image dimensions.
+    Has been modified from default, now expects and grabs from two image queues
+    desgined to relfect the two-camera nature of project. The grabbed images are
+    then fed into the ColourMapping object which performs the right mapping given
+    the mode and spits out a PIL image to be thrown onto the canvas.
     """
 
     def __init__(self, parent, iq1, iq2, mode="Raw"):
@@ -53,19 +58,23 @@ class LiveViewCanvas(tk.Canvas):
         self._image_width = 0
         self._image_height = 0
         tk.Canvas.__init__(self, parent)
-        self.pack()
+        # need the columnspan and row span to make alignment nice
+        self.grid(column=1, row=0, columnspan=5, rowspan=5)
         self._cmap = ColourMapper(mode)
+        self._photo_count = 0 # counter so don't overwrite saved images, might need to update this (timestamp?)
+        self._img_data = [] # need variable to store image in as can't seem to save directly from a ImageTk.PhotoImage Object
         self._get_image()
 
     def set_cmap_mode(self, mode):
+        """Setter for the Cmap mode."""
         self._cmap.set_mode(mode)
 
     def _get_image(self):
         try:
             image1 = self.image_queue1.get_nowait() 
             image2 = self.image_queue2.get_nowait()
-            image = self._cmap.colour_map(image1, image2)
-            self._image = ImageTk.PhotoImage(master=self, image=image)
+            self._img_data = self._cmap.colour_map(image1, image2)
+            self._image = ImageTk.PhotoImage(master=self, image=self._img_data)
             if (self._image.width() != self._image_width) or (self._image.height() != self._image_height):
                 # resize the canvas to match the new image size
                 self._image_width = self._image.width()
@@ -75,6 +84,11 @@ class LiveViewCanvas(tk.Canvas):
         except queue.Empty:
             pass
         self.after(10, self._get_image)
+
+    def take_photo(self):
+        """Take snapshot of current image by using the _img_data image.""" 
+        self._img_data.save("photos/" + str(self._photo_count), format="bmp")
+        self._photo_count += 1
 
 
 class ImageAcquisitionThread(threading.Thread):
@@ -117,10 +131,12 @@ class ImageAcquisitionThread(threading.Thread):
         self._stop_event = threading.Event()
 
     def get_output_queue(self):
+        """Getter for the queue object."""
         # type: (type(None)) -> queue.Queue
         return self._image_queue
 
     def stop(self):
+        """Stop thread object."""
         self._stop_event.set()
 
     def _get_color_image(self, frame):
