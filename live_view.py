@@ -1,5 +1,5 @@
 """
-Camera Live View - TkInter
+Camera Live View - TkInter.
 
 This example shows how one could create a live image viewer using TkInter.
 It also uses the third party library 'pillow', which is a fork of PIL.
@@ -37,16 +37,14 @@ try:
 except ImportError:
     import queue
 
-""" LiveViewCanvas
-
-This is a Tkinter Canvas object that can be reused in custom programs. The Canvas expects a parent Tkinter object and 
-an image queue. The image queue is a queue.Queue that it will pull images from, and is expected to hold PIL Image 
-objects that will be displayed to the canvas. It automatically adjusts its size based on the incoming image dimensions.
-
-"""
-
 
 class LiveViewCanvas(tk.Canvas):
+    """LiveViewCanvas.
+
+    This is a Tkinter Canvas object that can be reused in custom programs. The Canvas expects a parent Tkinter object and 
+    an image queue. The image queue is a queue.Queue that it will pull images from, and is expected to hold PIL Image 
+    objects that will be displayed to the canvas. It automatically adjusts its size based on the incoming image dimensions.
+    """
 
     def __init__(self, parent, image_queue):
         # type: (typing.Any, queue.Queue) -> LiveViewCanvas
@@ -72,18 +70,16 @@ class LiveViewCanvas(tk.Canvas):
         self.after(10, self._get_image)
 
 
-""" ImageAcquisitionThread
-
-This class derives from threading.Thread and is given a TLCamera instance during initialization. When started, the 
-thread continuously acquires frames from the camera and converts them to PIL Image objects. These are placed in a 
-queue.Queue object that can be retrieved using get_output_queue(). The thread doesn't do any arming or triggering, 
-so users will still need to setup and control the camera from a different thread. Be sure to call stop() when it is 
-time for the thread to stop.
-
-"""
-
-
 class ImageAcquisitionThread(threading.Thread):
+    """
+    ImageAcquisitionThread.
+
+    This class derives from threading. Thread and is given a TLCamera instance during initialization. When started, the 
+    thread continuously acquires frames from the camera and converts them to PIL Image objects. These are placed in a 
+    queue.Queue object that can be retrieved using get_output_queue(). The thread doesn't do any arming or triggering, 
+    so users will still need to setup and control the camera from a different thread. Be sure to call stop() when it is 
+    time for the thread to stop.
+    """
 
     def __init__(self, camera):
         # type: (TLCamera) -> ImageAcquisitionThread
@@ -140,7 +136,9 @@ class ImageAcquisitionThread(threading.Thread):
     def _get_image(self, frame):
         # type: (Frame) -> Image
         # no coloring, just scale down image to 8 bpp and place into PIL Image object
-        scaled_image = frame.image_buffer >> (self._bit_depth - 8)
+        # maybe this is where to throw the color mapping - i.e operate on frame.image_buffer then pass as PIL image
+        # bit shift by self._bit_depth -8 to right i.e divides image_buffer by 2** (bit_depth - 8)
+        scaled_image = frame.image_buffer >> (self._bit_depth - 8) 
         return Image.fromarray(scaled_image)
 
     def run(self):
