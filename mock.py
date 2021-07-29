@@ -18,11 +18,20 @@ import threading
 np.random.seed(1)
 
 # %%
+
+
 class MockCamera(threading.Thread):
+    """
+    MockCamera.
+
+    Fake class designed to emulate action of the ImageAcquistionThread in
+    live_view.py. Generates random array of fixed width and throws it onto a 
+    queue to be grabbed ad decoded by LiveViewCanvas.
+    """
+
     def __init__(self, on=True):
         super(MockCamera, self).__init__()
         self._image_queue = queue.Queue(maxsize=2)
-        self._cmapper = ColourMapper("Raw")
         self._stop_event = threading.Event()
         self._on = on
 
@@ -38,8 +47,8 @@ class MockCamera(threading.Thread):
             try:
                 if self._on is True:
                     LCPL = np.random.random((IMG_HEIGHT, IMG_WIDTH))
-                    pil_image = self._cmapper.colour_map(LCPL, None)
-                    self._image_queue.put_nowait(pil_image)
+                    #pil_image = self._cmapper.colour_map(LCPL, None)
+                    self._image_queue.put_nowait(LCPL)
                 else:
                     self._image_queue.put_nowait(None)
             except queue.Full:
@@ -49,6 +58,7 @@ class MockCamera(threading.Thread):
                 print("Encountered error: {error}, image acquisition will stop.".format(error=error))
                 break
         print("Image acquisition has stopped")
+
 
 # %% Static test of colour mapper ability
 c = ColourMapper("test")
@@ -62,20 +72,23 @@ LCPL = np.random.random((IMG_HEIGHT, IMG_WIDTH))
 RCPL = np.random.random((IMG_HEIGHT, IMG_WIDTH))
 
 c = ColourMapper("Raw")
-c.colour_map(LCPL, RCPL, debug=True)
+c.colour_map(LCPL, RCPL, debug=False)
 
 # %%
 root = tk.Tk()
 root.title("Mock CPL")
 camera1 = MockCamera()
-camera_widget = LiveViewCanvas(parent=root, image_queue=camera1.get_output_queue())
+camera2 = MockCamera()
+camera_widget = LiveViewCanvas(parent=root, iq1=camera1.get_output_queue(),
+                               iq2=camera2.get_output_queue(), mode="DOCP")
 camera1.start()
+camera2.start()
 
 print("App starting")
 root.mainloop()
 
 print("Waiting for image acquisition thread to finish...")
 camera1.stop()
-
 camera1.join()
-    
+camera2.stop()
+camera2.join()    

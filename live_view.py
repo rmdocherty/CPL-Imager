@@ -46,15 +46,19 @@ class LiveViewCanvas(tk.Canvas):
     objects that will be displayed to the canvas. It automatically adjusts its size based on the incoming image dimensions.
     """
 
-    def __init__(self, parent, image_queue):
+    def __init__(self, parent, iq1, iq2, mode="Raw"):
         # type: (typing.Any, queue.Queue) -> LiveViewCanvas
-        self.image_queue = image_queue
+        self.image_queue1 = iq1
+        self.image_queue2 = iq2
         self._image_width = 0
         self._image_height = 0
         tk.Canvas.__init__(self, parent)
         self.pack()
+        self._cmap = ColourMapper(mode)
         self._get_image()
-        self._cmap = ColourMapper("Raw")
+
+    def set_cmap_mode(self, mode):
+        self._cmap.set_mode(mode)
 
     def _get_image(self):
         try:
