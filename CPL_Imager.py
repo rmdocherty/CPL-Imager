@@ -7,9 +7,8 @@ Created on Fri Jul 30 10:51:34 2021
 """
 
 from thorlabs_tsi_sdk.tl_camera import TLCameraSDK
-from live_view import LiveViewCanvas, ImageAcquisitionThread
-from mock import MockCamera
-from GUI import CPL_Viewer
+from cameras import MockCamera, ImageAcquisitionThread
+from GUI import CPL_Viewer, LiveViewCanvas
 try:
     #  For python 2.7 tkinter is named Tkinter
     import Tkinter as tk
