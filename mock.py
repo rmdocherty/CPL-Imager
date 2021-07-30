@@ -25,7 +25,7 @@ class MockCamera(threading.Thread):
     MockCamera.
 
     Fake class designed to emulate action of the ImageAcquistionThread in
-    live_view.py. Generates random array of fixed width and throws it onto a 
+    live_view.py. Generates random array of fixed width and throws it onto a
     queue to be grabbed and decoded by LiveViewCanvas.
     """
 
@@ -50,7 +50,6 @@ class MockCamera(threading.Thread):
             try:
                 if self._on is True:
                     LCPL = np.random.random((IMG_HEIGHT, IMG_WIDTH))
-                    # pil_image = self._cmapper.colour_map(LCPL, None)
                     self._image_queue.put_nowait(LCPL)
                 else:
                     self._image_queue.put_nowait(None)
@@ -103,4 +102,4 @@ print("Waiting for image acquisition thread to finish...")
 camera1.stop()
 camera1.join()
 camera2.stop()
-camera2.join()    
+camera2.join()

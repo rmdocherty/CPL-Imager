@@ -37,6 +37,7 @@ try:
 except ImportError:
     import queue
 from colourmapper import ColourMapper
+from datetime import datetime
 
 
 class LiveViewCanvas(tk.Canvas):
@@ -61,7 +62,6 @@ class LiveViewCanvas(tk.Canvas):
         # need the columnspan and row span to make alignment nice
         self.grid(column=1, row=0, columnspan=5, rowspan=5)
         self._cmap = ColourMapper(mode)
-        self._photo_count = 0 # counter so don't overwrite saved images, might need to update this (timestamp?)
         self._img_data = [] # need variable to store image in as can't seem to save directly from a ImageTk.PhotoImage Object
         self._get_image()
 
@@ -71,7 +71,7 @@ class LiveViewCanvas(tk.Canvas):
 
     def _get_image(self):
         try:
-            image1 = self.image_queue1.get_nowait() 
+            image1 = self.image_queue1.get_nowait()
             image2 = self.image_queue2.get_nowait()
             self._img_data = self._cmap.colour_map(image1, image2)
             self._image = ImageTk.PhotoImage(master=self, image=self._img_data)
@@ -86,9 +86,10 @@ class LiveViewCanvas(tk.Canvas):
         self.after(10, self._get_image)
 
     def take_photo(self):
-        """Take snapshot of current image by using the _img_data image.""" 
-        self._img_data.save("photos/" + str(self._photo_count), format="bmp")
-        self._photo_count += 1
+        """Take snapshot of current image by using the _img_data image."""
+        timestamp = datetime.now()
+        timestamp_string = timestamp.strftime("%d-%m-%y_%H:%M:%S_%f")
+        self._img_data.save("photos/" + timestamp_string, format="bmp")
 
 
 class ImageAcquisitionThread(threading.Thread):
@@ -161,7 +162,7 @@ class ImageAcquisitionThread(threading.Thread):
         # no coloring, just scale down image to 8 bpp and place into PIL Image object
         # maybe this is where to throw the color mapping - i.e operate on frame.image_buffer then pass as PIL image
         # bit shift by self._bit_depth -8 to right i.e divides image_buffer by 2** (bit_depth - 8)
-        scaled_image = frame.image_buffer >> (self._bit_depth - 8) 
+        scaled_image = frame.image_buffer >> (self._bit_depth - 8)
         return Image.fromarray(scaled_image)
 
     def run(self):

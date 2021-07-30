@@ -16,7 +16,7 @@ class ColourMapper():
     ColourMapper.
 
     Given a RCPL and an LCPL np array of brightnesses from their respective
-    queues and an operating mode, colour map them based on a config file and 
+    queues and an operating mode, colour map them based on a config file and
     return the output PIL image(s) for Tkinter to use.
     """
 
@@ -34,7 +34,7 @@ class ColourMapper():
         """
         get_cmaps_from_config.
 
-        Generate DICT from config txt file that lets users map desired 
+        Generate DICT from config txt file that lets users map desired
         matplotlib cmaps to the operating mode. Probably shouldn't let
         users be able to change the mode names in the config file but que sera.
 
@@ -81,7 +81,7 @@ class ColourMapper():
 
         """
         if self._mode == "Raw":
-            cmap1, cmap2 = self._cmaps["Raw"] #unpack
+            cmap1, cmap2 = self._cmaps["Raw"]
             if img1 is not None and img2 is not None: #use this case 1st as most common!
                 cmapped_img1 = self._single_cmap(img1, cmap1)
                 cmapped_img2 = self._single_cmap(img2, cmap2)
