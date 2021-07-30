@@ -17,11 +17,21 @@ except ImportError:
 
 
 class CPL_Imager():
+    """
+    CPL_Imager.
+
+    Parent class that encapsulates the general program logic of the imaging system.
+    Creates a GUI from GUI.py, grabs two cameras using the SDK, creates a camera_widget
+    which is the live view canvas and throws it onto the Tkinter app. Starts (i.e arms)
+    the two cameras, then their respective image threads. Once the Tkinter app closes it
+    then stops those threads.
+    """
+
     def __init__(self):
         self._root = tk.Tk()
         self._GUI = CPL_Viewer(master=self._root)
         self._root.title("CPL Imager")
-        
+
     def _gen_image_acquisition_threads(self, cam1, cam2):
         return (ImageAcquisitionThread(cam1), ImageAcquisitionThread(cam2))
 
@@ -40,6 +50,7 @@ class CPL_Imager():
         self._start_camera(cam2)
 
     def run(self):
+        """Grab all available cameras and pass them into the main function."""
         with TLCameraSDK() as sdk:
             camera_list = sdk.discover_available_cameras()
             with camera_list[0] as cam1, camera_list[1] as cam2:
@@ -65,8 +76,22 @@ class CPL_Imager():
 
         print("Closing resources...")
 
+
 class CPL_Imager_One_Camera(CPL_Imager):
+    """
+    CPL_Imager_One_Camera.
+
+    A child class from CPL_Imager intended for use when only one camera is
+    connected to the computer. First checks which 'handedness' of camera is
+    attached i.e is it the LCPL or RCPL camera and switches the image queues
+    accordingly (this is so it will be colourmapped correctly). The second
+    camera is replaced by a MockCamera that constantly puts None into the
+    queue, which will then be grabbed by the Canvas and processed correctly
+    by ColourMapper.
+    """
+
     def _gen_image_acquisition_threads(self, cam1, cam2):
+        # MockCameras are really a Mock thread so don't need to operate on them as we do for cameras.
         return (ImageAcquisitionThread(cam1), cam2)
 
     def _gen_widget(self, image_queue1, image_queue2):
@@ -96,7 +121,15 @@ class CPL_Imager_One_Camera(CPL_Imager):
                 cam2 = MockCamera(off=True)
                 self._main_function(cam1, cam2)
 
+
 class CPL_Imager_No_Camera(CPL_Imager):
+    """
+    CPL_Imager_No_Camera.
+
+    Another child class of CPL_Imager, designed for use with no cameras i.e as
+    a demo. Reallt just an extension of the ideas of One_Camera.
+    """
+
     def _gen_image_acquisition_threads(self, cam1, cam2):
         return (cam1, cam2)
 

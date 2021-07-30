@@ -17,6 +17,16 @@ from datetime import datetime
 
 
 class CPL_Viewer(tk.Frame):
+    """
+    CPL_Viewer.
+
+    GUI object for the viewer, basically a menu of buttons on the left hand
+    side of the liveCanvas. Before creating any widgets it needs a camera_widget
+    ( == a liveCanvas) that it can bind functions to. This is because all the
+    buttons are are wrappers for the liveCanvas functions anway. Widgets laid
+    out according to grid system as this produces nicest results.
+    """
+
     def __init__(self, master=None):
         tk.Frame.__init__(self, master)
 
@@ -95,4 +105,3 @@ class LiveViewCanvas(tk.Canvas):
         timestamp = datetime.now()
         timestamp_string = timestamp.strftime("%d-%m-%y_%H:%M:%S_%f")
         self._img_data.save("photos/" + timestamp_string, format="bmp")
-

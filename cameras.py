@@ -23,10 +23,10 @@ class ImageAcquisitionThread(threading.Thread):
     """
     ImageAcquisitionThread.
 
-    This class derives from threading. Thread and is given a TLCamera instance during initialization. When started, the 
-    thread continuously acquires frames from the camera and converts them to PIL Image objects. These are placed in a 
-    queue.Queue object that can be retrieved using get_output_queue(). The thread doesn't do any arming or triggering, 
-    so users will still need to setup and control the camera from a different thread. Be sure to call stop() when it is 
+    This class derives from threading. Thread and is given a TLCamera instance during initialization. When started, the
+    thread continuously acquires frames from the camera and converts them to PIL Image objects. These are placed in a
+    queue.Queue object that can be retrieved using get_output_queue(). The thread doesn't do any arming or triggering,
+    so users will still need to setup and control the camera from a different thread. Be sure to call stop() when it is
     time for the thread to stop.
     """
 
@@ -59,6 +59,12 @@ class ImageAcquisitionThread(threading.Thread):
         return Image.fromarray(scaled_image)
 
     def run(self):
+        """
+        Run.
+
+        While thread is running grab frames from camera, create a PIL image from them
+        and put them onto the queue.
+        """
         while not self._stop_event.is_set():
             try:
                 frame = self._camera.get_pending_frame_or_null()
