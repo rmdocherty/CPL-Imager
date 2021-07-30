@@ -76,30 +76,30 @@ def take_photo():
 
 
 # %%
-root = tk.Tk()
-root.title("Mock CPL")
+# root = tk.Tk()
+# root.title("Mock CPL")
 
-# TKinter GUI stuff, shouldn't need anything more complicated
-# .grid() aligns the components to LHS of canvas
-photo = tk.Button(text="Take Photo", command=take_photo).grid(column=0, row=0, ipadx=8, ipady=8, padx=8, pady=8)
-label = tk.Label(text="Modes:").grid(column=0, row=1, ipadx=8, ipady=8, padx=8, pady=8)
+# # TKinter GUI stuff, shouldn't need anything more complicated
+# # .grid() aligns the components to LHS of canvas
+# photo = tk.Button(text="Take Photo", command=take_photo).grid(column=0, row=0, ipadx=8, ipady=8, padx=8, pady=8)
+# label = tk.Label(text="Modes:").grid(column=0, row=1, ipadx=8, ipady=8, padx=8, pady=8)
 
-raw_btn = tk.Button(text="Raw", command=switch_to_raw).grid(column=0, row=2, ipadx=8, ipady=8, padx=8, pady=8)
-DOCP_btn = tk.Button(text="DOCP", command=switch_to_DOCP).grid(column=0, row=3, ipadx=8, ipady=8, padx=8, pady=8)
-g_em_btn = tk.Button(text="g_em", command=switch_to_g_em).grid(column=0, row=4, ipadx=8, ipady=8, padx=8, pady=8)
+# raw_btn = tk.Button(text="Raw", command=switch_to_raw).grid(column=0, row=2, ipadx=8, ipady=8, padx=8, pady=8)
+# DOCP_btn = tk.Button(text="DOCP", command=switch_to_DOCP).grid(column=0, row=3, ipadx=8, ipady=8, padx=8, pady=8)
+# g_em_btn = tk.Button(text="g_em", command=switch_to_g_em).grid(column=0, row=4, ipadx=8, ipady=8, padx=8, pady=8)
 
-camera1 = MockCamera()
-camera2 = MockCamera()
-camera_widget = LiveViewCanvas(parent=root, iq1=camera1.get_output_queue(),
-                               iq2=camera2.get_output_queue(), mode="Raw")
-camera1.start()
-camera2.start()
+# camera1 = MockCamera()
+# camera2 = MockCamera()
+# camera_widget = LiveViewCanvas(parent=root, iq1=camera1.get_output_queue(),
+#                                iq2=camera2.get_output_queue(), mode="Raw")
+# camera1.start()
+# camera2.start()
 
-print("App starting")
-root.mainloop()
+# print("App starting")
+# root.mainloop()
 
-print("Waiting for image acquisition thread to finish...")
-camera1.stop()
-camera1.join()
-camera2.stop()
-camera2.join()
+# print("Waiting for image acquisition thread to finish...")
+# camera1.stop()
+# camera1.join()
+# camera2.stop()
+# camera2.join()
