@@ -7,7 +7,7 @@ Created on Fri Jul 30 10:51:34 2021
 """
 
 from thorlabs_tsi_sdk.tl_camera import TLCameraSDK
-from cameras import MockCamera, ImageAcquisitionThread
+from cameras import MockCamera, ImageAcquisitionThread, MockCompact, CompactImageAcquisitionThread
 from GUI import CPL_Viewer, LiveViewCanvas
 try:
     #  For python 2.7 tkinter is named Tkinter
@@ -65,10 +65,9 @@ class CPL_Imager():
         image_acquisition_thread_1.start()
         image_acquisition_thread_2.start()
 
-        print("App starting")
+        print("Viewer starting")
         self._root.mainloop()
 
-        print("Waiting for image acquisition thread to finish...")
         image_acquisition_thread_1.stop()
         image_acquisition_thread_1.join()
         image_acquisition_thread_2.stop()
@@ -121,6 +120,46 @@ class CPL_Imager_One_Camera(CPL_Imager):
                 cam2 = MockCamera(off=True)
                 self._main_function(cam1, cam2)
 
+class Compact_CPL_Imager(CPL_Imager_One_Camera):
+
+    def run(self):
+        """Grab all available cameras and pass them into the main function."""
+        self._camera_handedness = "LCPL" #assumes it starts w/ LCPL
+        with TLCameraSDK() as sdk:
+            camera_list = sdk.discover_available_cameras()
+            with camera_list[0] as cam:
+                self._main_function(cam)
+    
+    def _gen_compactIAT(self, camera):
+        return CompactImageAcquisitionThread(camera)
+
+    def _main_function(self, cam):
+        image_acquisition_thread = self._gen_compactIAT(cam)
+        camera_widget = self._gen_widget(image_acquisition_thread.get_output_queue(),
+                                         image_acquisition_thread.get_output_queue_2())
+        self._GUI.set_camera_widget(camera_widget)
+        self._start_camera(cam)
+        image_acquisition_thread.start()
+
+        print("Viewer starting")
+        self._root.mainloop()
+
+        image_acquisition_thread.stop()
+        image_acquisition_thread.join()
+        print("Closing resources...")
+
+class Mock_Compact_Imager(Compact_CPL_Imager):
+
+    def run(self):
+        self._camera_handedness = "lcpl"
+        cam = MockCompact()
+        self._main_function(cam)
+
+    def _gen_compactIAT(self, camera):
+        return camera
+
+    def _start_camera(self, cam):
+        pass
 
 class CPL_Imager_No_Camera(CPL_Imager):
     """
@@ -143,5 +182,26 @@ class CPL_Imager_No_Camera(CPL_Imager):
 
 
 if __name__ == "__main__":
-    imager = CPL_Imager_No_Camera()
+    camera_list = TLCameraSDK().discover_available_cameras()
+    optical_layout = input("Beamsplitter or Compact design? ")
+    if len(camera_list) == 2:
+        imager = CPL_Imager()
+    elif len(camera_list) == 1:
+        if optical_layout in ["beamsplitter", "Beamsplitter", "BEAMSPLITTER", "b", "B", "1"]:
+            imager = Compact_CPL_Imager()
+        elif optical_layout in ["compact", "Compact", "Compact design", "COMPACT DESIGN", "COMPACT", "c", "C", "cd", "CD", "2"]:
+            imager = CPL_Imager_One_Camera()
+        else:
+            raise Exception("Please choose either the beamsplitter or compact design.")
+    elif len(camera_list) == 0:
+        if optical_layout in ["beamsplitter", "Beamsplitter", "BEAMSPLITTER", "b", "B", "1"]:
+            imager = CPL_Imager_No_Camera()
+        elif optical_layout in ["compact", "Compact", "Compact design", "COMPACT DESIGN", "COMPACT", "c", "C", "cd", "CD", "2"]:
+            imager = Mock_Compact_Imager()
+        else:
+            raise Exception("Please choose either the beamsplitter or compact design.")
+    else:
+        raise Exception("Too many cameras!")
+    print(f"Operating with {len(camera_list)} cameras!")
     imager.run()
+    TLCameraSDK().dispose()
