@@ -57,7 +57,7 @@ class ImageAcquisitionThread(threading.Thread):
         # maybe this is where to throw the color mapping - i.e operate on frame.image_buffer then pass as PIL image
         # bit shift by self._bit_depth -8 to right i.e divides image_buffer by 2** (bit_depth - 8)
         scaled_image = frame.image_buffer >> (self._bit_depth - 8)
-        return Image.fromarray(scaled_image)
+        return scaled_image / 255  #rescaled from 0 - 1 for colourmap
 
     def run(self):
         """
@@ -87,11 +87,9 @@ class CompactImageAcquisitionThread(ImageAcquisitionThread):
     """
     CompactImageAcquisitionThread.
 
-    This class derives from threading. Thread and is given a TLCamera instance during initialization. When started, the
-    thread continuously acquires frames from the camera and converts them to PIL Image objects. These are placed in a
-    queue.Queue object that can be retrieved using get_output_queue(). The thread doesn't do any arming or triggering,
-    so users will still need to setup and control the camera from a different thread. Be sure to call stop() when it is
-    time for the thread to stop.
+    This class derives from IAT. Has 2 queues, one for each polarization.
+    Does the same stuff as IAT but each time it takes a photo it rotates the
+    piezo motor 90 degrees and swaps which queue to put the image into.
     """
 
     def __init__(self, camera):
@@ -148,8 +146,9 @@ class CompactImageAcquisitionThread(ImageAcquisitionThread):
         """Stop thread object."""
         self._stop_event.set()
 
-class MockCompact(threading.Thread):
 
+class MockCompact(threading.Thread):
+    """Mock version of CompactIAT."""
 
     def __init__(self, on=True):
         super(MockCompact, self).__init__()
@@ -172,8 +171,8 @@ class MockCompact(threading.Thread):
     def _rotate_mount(self, degrees):
         sleep(0.02) #simulate rotating camera - in actual fn. will need to check rotation done before returning
 
-
     def run(self):
+        """Same as CompactIAT but generates random data rather than taking images."""
         while not self._stop_event.is_set():
             self._rotate_mount(90)
             try:

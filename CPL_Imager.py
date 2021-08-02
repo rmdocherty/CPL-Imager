@@ -53,7 +53,7 @@ class CPL_Imager():
         """Grab all available cameras and pass them into the main function."""
         with TLCameraSDK() as sdk:
             camera_list = sdk.discover_available_cameras()
-            with camera_list[0] as cam1, camera_list[1] as cam2:
+            with sdk.open_camera(camera_list[0]) as cam1, sdk.open_camera(camera_list[1]) as cam2:
                 self._main_function(cam1, cam2)
 
     def _main_function(self, cam1, cam2):
@@ -116,20 +116,29 @@ class CPL_Imager_One_Camera(CPL_Imager):
         self._camera_handedness = input("Which camera is plugged in - LCPL or RCPL?").lower()
         with TLCameraSDK() as sdk:
             camera_list = sdk.discover_available_cameras()
-            with camera_list[0] as cam1:
-                cam2 = MockCamera(off=True)
+            print(camera_list)
+            with sdk.open_camera(camera_list[0]) as cam1:
+                cam2 = MockCamera(on=False)
                 self._main_function(cam1, cam2)
 
+
 class Compact_CPL_Imager(CPL_Imager_One_Camera):
+    """
+    Compact_CPL_Imager.
+
+    For use in the compact optical design - i.e a single camera and a linear
+    polarizer on a rotating mount. Takes image every 0.2 seconds in alteranting
+    polarizations.
+    """
 
     def run(self):
         """Grab all available cameras and pass them into the main function."""
         self._camera_handedness = "LCPL" #assumes it starts w/ LCPL
         with TLCameraSDK() as sdk:
             camera_list = sdk.discover_available_cameras()
-            with camera_list[0] as cam:
+            with sdk.open_camera(camera_list[0]) as cam:
                 self._main_function(cam)
-    
+
     def _gen_compactIAT(self, camera):
         return CompactImageAcquisitionThread(camera)
 
@@ -148,6 +157,7 @@ class Compact_CPL_Imager(CPL_Imager_One_Camera):
         image_acquisition_thread.join()
         print("Closing resources...")
 
+
 class Mock_Compact_Imager(Compact_CPL_Imager):
 
     def run(self):
@@ -160,6 +170,7 @@ class Mock_Compact_Imager(Compact_CPL_Imager):
 
     def _start_camera(self, cam):
         pass
+
 
 class CPL_Imager_No_Camera(CPL_Imager):
     """
@@ -188,9 +199,9 @@ if __name__ == "__main__":
         imager = CPL_Imager()
     elif len(camera_list) == 1:
         if optical_layout in ["beamsplitter", "Beamsplitter", "BEAMSPLITTER", "b", "B", "1"]:
-            imager = Compact_CPL_Imager()
-        elif optical_layout in ["compact", "Compact", "Compact design", "COMPACT DESIGN", "COMPACT", "c", "C", "cd", "CD", "2"]:
             imager = CPL_Imager_One_Camera()
+        elif optical_layout in ["compact", "Compact", "Compact design", "COMPACT DESIGN", "COMPACT", "c", "C", "cd", "CD", "2"]:
+            imager = Compact_CPL_Imager()
         else:
             raise Exception("Please choose either the beamsplitter or compact design.")
     elif len(camera_list) == 0:
