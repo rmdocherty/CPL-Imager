@@ -7,7 +7,7 @@ Created on Fri Jul 30 10:51:34 2021
 """
 
 from thorlabs_tsi_sdk.tl_camera import TLCameraSDK
-from cameras import MockCamera, ImageAcquisitionThread, MockCompact, CompactImageAcquisitionThread
+from cameras import MockCamera, ImageAcquisitionThread, MockCompact, CompactImageAcquisitionThread, SingleCamera
 from GUI import CPL_Viewer, LiveViewCanvas
 try:
     #  For python 2.7 tkinter is named Tkinter
@@ -118,8 +118,23 @@ class CPL_Imager_One_Camera(CPL_Imager):
             camera_list = sdk.discover_available_cameras()
             print(camera_list)
             with sdk.open_camera(camera_list[0]) as cam1:
-                cam2 = MockCamera(on=False)
-                self._main_function(cam1, cam2)
+                #cam2 = MockCamera(on=False)
+                self._main_function(cam1)
+
+    def _main_function(self, cam):
+        image_acquisition_thread = SingleCamera(cam)
+        camera_widget = self._gen_widget(image_acquisition_thread.get_output_queue(),
+                                         image_acquisition_thread.get_output_queue_2())
+        self._GUI.set_camera_widget(camera_widget)
+        self._start_camera(cam)
+        image_acquisition_thread.start()
+
+        print("Viewer starting")
+        self._root.mainloop()
+
+        image_acquisition_thread.stop()
+        image_acquisition_thread.join()
+        print("Closing resources...")
 
 
 class Compact_CPL_Imager(CPL_Imager_One_Camera):

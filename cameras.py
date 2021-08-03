@@ -33,7 +33,7 @@ class ImageAcquisitionThread(threading.Thread):
 
     def __init__(self, camera):
         # type: (TLCamera) -> ImageAcquisitionThread
-        super(ImageAcquisitionThread, self).__init__()
+        super().__init__() #pdon't include class inside super as this breaks inheritance for child classes!
         self._camera = camera
         self._previous_timestamp = 0
 
@@ -94,16 +94,9 @@ class CompactImageAcquisitionThread(ImageAcquisitionThread):
 
     def __init__(self, camera):
         # type: (TLCamera) -> ImageAcquisitionThread
-        super(CompactImageAcquisitionThread, self).__init__()
-        self._camera = camera
-        self._previous_timestamp = 0
+        super().__init__(camera)
         self._imaging_LCPl = True
-
-        self._bit_depth = camera.bit_depth
-        self._camera.image_poll_timeout_ms = 0  # Do not want to block for long periods of time
-        self._image_queue = queue.Queue(maxsize=2)
         self._image_queue_2 = queue.Queue(maxsize=2)
-        self._stop_event = threading.Event()
 
     def get_output_queue_2(self):
         """Getter for the queue object."""
@@ -147,53 +140,31 @@ class CompactImageAcquisitionThread(ImageAcquisitionThread):
         self._stop_event.set()
 
 
-class MockCompact(threading.Thread):
-    """Mock version of CompactIAT."""
-
-    def __init__(self, on=True):
-        super(MockCompact, self).__init__()
-        self._image_queue = queue.Queue(maxsize=2)
-        self._image_queue_2 = queue.Queue(maxsize=2)
-        self._stop_event = threading.Event()
-        self._on = on
-        self._imaging_LCPl = True
-
-    def get_output_queue(self):
-        """Getter for the queue object."""
-        # type: (type(None)) -> queue.Queue
-        return self._image_queue
-
-    def get_output_queue_2(self):
-        """Getter for the queue object."""
-        # type: (type(None)) -> queue.Queue
-        return self._image_queue_2
-
-    def _rotate_mount(self, degrees):
-        sleep(0.02) #simulate rotating camera - in actual fn. will need to check rotation done before returning
+class SingleCamera(CompactImageAcquisitionThread):
 
     def run(self):
-        """Same as CompactIAT but generates random data rather than taking images."""
+        """
+        Run.
+
+        Rotate camera & take image. Each time image is taken and put onto queue,
+        switch which queue is being used.
+        """
         while not self._stop_event.is_set():
-            self._rotate_mount(90)
             try:
-                pil_image = np.random.random((IMG_HEIGHT, IMG_WIDTH))
-                if self._imaging_LCPl is True:
-                    iq = self._image_queue
-                else:
-                    iq = self._image_queue_2
-                iq.put_nowait(pil_image)
-                self._imaging_LCPl = not self._imaging_LCPl #toggle bool
-            except queue.Full:
+                frame = self._camera.get_pending_frame_or_null()
+                if frame is not None:
+                    pil_image = self._get_image(frame)
+                    self._image_queue.put_nowait(pil_image)
+                    self._image_queue_2.put_nowait(None)
+            except queue.Full: #maybe this is problem
                 # No point in keeping this image around when the queue is full, let's skip to the next one
                 pass
             except Exception as error:
                 print("Encountered error: {error}, image acquisition will stop.".format(error=error))
                 break
         print("Image acquisition has stopped")
-
-    def stop(self):
-        """Stop thread object."""
-        self._stop_event.set()
+        TLCamera.disarm()
+        TLCamera.dispose()
 
 
 class MockCamera(threading.Thread):
@@ -206,7 +177,7 @@ class MockCamera(threading.Thread):
     """
 
     def __init__(self, on=True):
-        super(MockCamera, self).__init__()
+        super().__init__()
         self._image_queue = queue.Queue(maxsize=2)
         self._stop_event = threading.Event()
         self._on = on
@@ -229,6 +200,44 @@ class MockCamera(threading.Thread):
                     self._image_queue.put_nowait(LCPL)
                 else:
                     self._image_queue.put_nowait(None)
+            except queue.Full:
+                # No point in keeping this image around when the queue is full, let's skip to the next one
+                pass
+            except Exception as error:
+                print("Encountered error: {error}, image acquisition will stop.".format(error=error))
+                break
+        print("Image acquisition has stopped")
+
+
+class MockCompact(MockCamera):
+    """Mock version of CompactIAT."""
+
+    def __init__(self, on=True):
+        super().__init__()
+        self._image_queue_2 = queue.Queue(maxsize=2)
+        self._on = on
+        self._imaging_LCPl = True
+
+    def get_output_queue_2(self):
+        """Getter for the queue object."""
+        # type: (type(None)) -> queue.Queue
+        return self._image_queue_2
+
+    def _rotate_mount(self, degrees):
+        sleep(0.02) #simulate rotating camera - in actual fn. will need to check rotation done before returning
+
+    def run(self):
+        """Same as CompactIAT but generates random data rather than taking images."""
+        while not self._stop_event.is_set():
+            self._rotate_mount(90)
+            try:
+                pil_image = np.random.random((IMG_HEIGHT, IMG_WIDTH))
+                if self._imaging_LCPl is True:
+                    iq = self._image_queue
+                else:
+                    iq = self._image_queue_2
+                iq.put_nowait(pil_image)
+                self._imaging_LCPl = not self._imaging_LCPl #toggle bool
             except queue.Full:
                 # No point in keeping this image around when the queue is full, let's skip to the next one
                 pass

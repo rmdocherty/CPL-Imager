@@ -93,7 +93,7 @@ class LiveViewCanvas(tk.Canvas):
             if (self._image.width() != self._image_width) or (self._image.height() != self._image_height):
                 # resize the canvas to match the new image size
                 self._image_width = self._image.width() / 2
-                self._image_height = self._image.height() / 2  #remove this scaling later!
+                self._image_height = self._image.height() / 2 #remove this scaling later!
                 self.config(width=self._image_width, height=self._image_height)
             self.create_image(0, 0, image=self._image, anchor='nw')
         except queue.Empty:
