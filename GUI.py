@@ -88,12 +88,13 @@ class LiveViewCanvas(tk.Canvas):
         try:
             image1 = self.image_queue1.get_nowait()
             image2 = self.image_queue2.get_nowait()
-            self._img_data = self._cmap.colour_map(image1, image2)
+            unrotated_img = self._cmap.colour_map(image1, image2)
+            self._img_data = unrotated_img.rotate(270) #image right way up
             self._image = ImageTk.PhotoImage(master=self, image=self._img_data)
             if (self._image.width() != self._image_width) or (self._image.height() != self._image_height):
                 # resize the canvas to match the new image size
-                self._image_width = self._image.width() / 2
-                self._image_height = self._image.height() / 2 #remove this scaling later!
+                self._image_width = self._image.width() / 1.25
+                self._image_height = self._image.height() / 1.25  #remove this scaling later!
                 self.config(width=self._image_width, height=self._image_height)
             self.create_image(0, 0, image=self._image, anchor='nw')
         except queue.Empty:
