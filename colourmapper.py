@@ -30,6 +30,10 @@ class ColourMapper():
     def set_mode(self, mode): # so can set mode w/o re-initialising
         self._mode = mode
 
+    def set_cmaps(self, list_cmaps):
+        """Given list of strings referring to mpl cmaps, set the cap mode """
+        self._cmaps = {"Raw": [list_cmaps[0], list_cmaps[1]], "DOCP": list_cmaps[2], "g_em": list_cmaps[3]}
+
     def _get_cmaps_from_config(self):
         """
         get_cmaps_from_config.

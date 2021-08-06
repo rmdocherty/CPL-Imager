@@ -47,13 +47,50 @@ class CPL_Viewer(tk.Frame):
     def _take_photo(self):
         self._camera_widget.take_photo()
 
+    def _cmap_window(self):
+        self._cmap_menu = tk.Toplevel()
+        self._cmap_menu.title("Colour map selector")
+        LCPL = tk.Text(self._cmap_menu, height=2, width=30)
+        LCPL_text = tk.Label(self._cmap_menu, text="LCPL:")
+        RCPL = tk.Text(self._cmap_menu, height=2, width=30)
+        RCPL_text = tk.Label(self._cmap_menu, text="RCPL:")
+        DOCP = tk.Text(self._cmap_menu, height=2, width=30)
+        DOCPL_text = tk.Label(self._cmap_menu, text="DOCP:")
+        g_em = tk.Text(self._cmap_menu, height=2, width=30)
+        g_em_text = tk.Label(self._cmap_menu, text="g_em:")
+
+        self._cmap_menu_fields = [LCPL, RCPL, DOCP, g_em]
+
+        set_cmaps = tk.Button(self._cmap_menu, text="Done", command=self._submit_cmaps)
+        for i, lbl in enumerate([LCPL_text, RCPL_text, DOCPL_text, g_em_text]):
+            lbl.grid(column=0, row=i)
+        for i, txt in enumerate([LCPL, RCPL, DOCP, g_em]):
+            txt.grid(column=1, row=i)
+        set_cmaps.grid(column=0, row=4, columnspan=2)
+        
+
+    def _submit_cmaps(self):
+        cmap_list = []
+        for txt_field in self._cmap_menu_fields:
+            text = txt_field.get("1.0", "end-1c")
+            print(text)
+            cmap_list.append(text)
+        try:
+            self._camera_widget.set_cmaps(cmap_list)
+        except Exception:
+            print("Invalid cmaps supplied, check you've entered correctly!")
+        self._cmap_menu.destroy()
+
+
     def _createWidgets(self):
         photo = tk.Button(text="Take Photo", command=self._take_photo).grid(column=0, row=0, ipadx=8, ipady=8, padx=8, pady=8)
-        label = tk.Label(text="Modes:").grid(column=0, row=1, ipadx=8, ipady=8, padx=8, pady=8)
+        cmap_btn = tk.Button(text="Set Cmaps", command=self._cmap_window).grid(column=0, row=1, ipadx=8, ipady=8, padx=8, pady=8)
+        label = tk.Label(text="Modes:").grid(column=0, row=2, ipadx=8, ipady=8, padx=8, pady=8)
         
-        raw_btn = tk.Button(text="Raw", command=self._switch_to_raw).grid(column=0, row=2, ipadx=8, ipady=8, padx=8, pady=8)
-        DOCP_btn = tk.Button(text="DOCP", command=self._switch_to_DOCP).grid(column=0, row=3, ipadx=8, ipady=8, padx=8, pady=8)
-        g_em_btn = tk.Button(text="g_em", command=self._switch_to_g_em).grid(column=0, row=4, ipadx=8, ipady=8, padx=8, pady=8)
+        raw_btn = tk.Button(text="Raw", command=self._switch_to_raw).grid(column=0, row=3, ipadx=8, ipady=8, padx=8, pady=8)
+        DOCP_btn = tk.Button(text="DOCP", command=self._switch_to_DOCP).grid(column=0, row=4, ipadx=8, ipady=8, padx=8, pady=8)
+        g_em_btn = tk.Button(text="g_em", command=self._switch_to_g_em).grid(column=0, row=5, ipadx=8, ipady=8, padx=8, pady=8)
+        
 
 
 class LiveViewCanvas(tk.Canvas):
@@ -83,6 +120,9 @@ class LiveViewCanvas(tk.Canvas):
     def set_cmap_mode(self, mode):
         """Setter for the Cmap mode."""
         self._cmap.set_mode(mode)
+
+    def set_cmaps(self, cmap_list):
+        self._cmap.set_cmaps(cmap_list)
 
     def _get_image(self):
         try:
