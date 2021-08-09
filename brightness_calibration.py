@@ -22,14 +22,14 @@ def pretty_subplot(axis, x_label, y_label, title, fontsize):  #formatting graphs
 
 class CPL_img_analysis():
     def __init__(self, path, name):
-        self._pil_image = Image.open(path)
-        self._np_arr = np.array(self._pil_image)[:, :, :3]
+        self._pil_image = Image.open(path).convert('LA')
+        self._np_arr = np.array(self._pil_image)[:, :, 0]
         self._flattened = self._np_arr
         self._flattened.flatten()
         self._name = name
 
     def get_stats(self):
-        img_arr = self._flattened
+        img_arr = self._np_arr
         max_br = np.max(img_arr)
         min_br = np.min(img_arr)
         avg_br = np.mean(img_arr)
@@ -40,12 +40,12 @@ class CPL_img_analysis():
         return max_br, min_br, avg_br, std_br
 
     def get_non_zero_regions(self):
-        w = self._np_arr[self._np_arr != np.array([0, 0, 0, 255])]
+        w = self._np_arr[self._np_arr != 0]
         return w
-    
+
     def get_histo(self):
-        img_arr = self.get_non_zero_regions()#self._np_arr
-        histo, edges = np.histogram(img_arr, bins=100, density=True)
+        img_arr = self._np_arr
+        histo, edges = np.histogram(img_arr, bins=250, range=(0,250))
         return histo, edges
 
 
@@ -67,8 +67,9 @@ for index, CPL in enumerate([min_LCPL, max_LCPL, min_RCPL, max_RCPL]):
 
     #ax.set_title(CPL._name)
     ax.hist(x=histo, bins=edges, color=colours[index])
-    #ax.vlines(x=avg, ymin=0, ymax=10, color="black", ls="--", label=f"Avg={avg:.2f} +/- {stderr:.2f}")
+    ax.vlines(x=avg, ymin=0, ymax=35, color="black", ls="--", label=f"Avg={avg:.2f} +/- {stderr:.2f}")
     pretty_subplot(ax, "Pixel value", "Count", CPL._name, 12)
     ax.legend(fontsize=12)
+    #ax.set_xlim(0, 250)
     
     
