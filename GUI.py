@@ -67,7 +67,6 @@ class CPL_Viewer(tk.Frame):
         for i, txt in enumerate([LCPL, RCPL, DOCP, g_em]):
             txt.grid(column=1, row=i)
         set_cmaps.grid(column=0, row=4, columnspan=2)
-        
 
     def _submit_cmaps(self):
         cmap_list = []
@@ -81,16 +80,18 @@ class CPL_Viewer(tk.Frame):
             print("Invalid cmaps supplied, check you've entered correctly!")
         self._cmap_menu.destroy()
 
-
     def _createWidgets(self):
-        photo = tk.Button(text="Take Photo", command=self._take_photo).grid(column=0, row=0, ipadx=8, ipady=8, padx=8, pady=8)
-        cmap_btn = tk.Button(text="Set Cmaps", command=self._cmap_window).grid(column=0, row=1, ipadx=8, ipady=8, padx=8, pady=8)
-        label = tk.Label(text="Modes:").grid(column=0, row=2, ipadx=8, ipady=8, padx=8, pady=8)
-        
-        raw_btn = tk.Button(text="Raw", command=self._switch_to_raw).grid(column=0, row=3, ipadx=8, ipady=8, padx=8, pady=8)
-        DOCP_btn = tk.Button(text="DOCP", command=self._switch_to_DOCP).grid(column=0, row=4, ipadx=8, ipady=8, padx=8, pady=8)
-        g_em_btn = tk.Button(text="g_em", command=self._switch_to_g_em).grid(column=0, row=5, ipadx=8, ipady=8, padx=8, pady=8)
-        
+        photo = tk.Button(text="Take Photo", command=self._take_photo)
+        cmap_btn = tk.Button(text="Set Cmaps", command=self._cmap_window)
+        label = tk.Label(text="Modes:")
+
+        raw_btn = tk.Button(text="Raw", command=self._switch_to_raw)
+        DOCP_btn = tk.Button(text="DOCP", command=self._switch_to_DOCP)
+        g_em_btn = tk.Button(text="g_em", command=self._switch_to_g_em)
+        btns = [photo, cmap_btn, label, raw_btn, DOCP_btn, g_em_btn]
+        pad = 1
+        for index, b in enumerate(btns):
+            b.grid(column=0, row=index, ipadx=pad, ipady=pad, padx=pad, pady=pad)
 
 
 class LiveViewCanvas(tk.Canvas):
@@ -129,12 +130,12 @@ class LiveViewCanvas(tk.Canvas):
             image1 = self.image_queue1.get_nowait()
             image2 = self.image_queue2.get_nowait()
             unrotated_img = self._cmap.colour_map(image1, image2)
-            self._img_data = unrotated_img.rotate(270) #image right way up
+            self._img_data = unrotated_img.rotate(270) #image right way up - but it does end up stacking vertically rather than horizontally for 2 img setups
             self._image = ImageTk.PhotoImage(master=self, image=self._img_data)
             if (self._image.width() != self._image_width) or (self._image.height() != self._image_height):
                 # resize the canvas to match the new image size
-                self._image_width = self._image.width() / 1.25
-                self._image_height = self._image.height() / 1.25  #remove this scaling later!
+                self._image_width = self._image.width() / 1
+                self._image_height = self._image.height() / 1  #remove this scaling later!
                 self.config(width=self._image_width, height=self._image_height)
             self.create_image(0, 0, image=self._image, anchor='nw')
         except queue.Empty:

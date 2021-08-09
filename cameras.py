@@ -79,8 +79,8 @@ class ImageAcquisitionThread(threading.Thread):
                 print("Encountered error: {error}, image acquisition will stop.".format(error=error))
                 break
         print("Image acquisition has stopped")
-        TLCamera.disarm()
-        TLCamera.dispose()
+        self._camera.disarm()
+        self._camera.dispose()
 
 
 class CompactImageAcquisitionThread(ImageAcquisitionThread):
@@ -132,8 +132,8 @@ class CompactImageAcquisitionThread(ImageAcquisitionThread):
                 print("Encountered error: {error}, image acquisition will stop.".format(error=error))
                 break
         print("Image acquisition has stopped")
-        TLCamera.disarm()
-        TLCamera.dispose()
+        self._camera.disarm()
+        self._camera.dispose()
 
     def stop(self):
         """Stop thread object."""
@@ -163,8 +163,8 @@ class SingleCamera(CompactImageAcquisitionThread):
                 print("Encountered error: {error}, image acquisition will stop.".format(error=error))
                 break
         print("Image acquisition has stopped")
-        TLCamera.disarm()
-        TLCamera.dispose()
+        self._camera.disarm()
+        self._camera.dispose()
 
 
 class MockCamera(threading.Thread):
