@@ -5,7 +5,7 @@ Created on Fri Jul 30 10:51:34 2021
 
 @author: ronan
 """
-
+#TODO: consider how it works on Windows by looking at Thorlabs examples
 from thorlabs_tsi_sdk.tl_camera import TLCameraSDK
 from cameras import MockCamera, ImageAcquisitionThread, MockCompact, CompactImageAcquisitionThread, SingleCamera
 from GUI import CPL_Viewer, LiveViewCanvas

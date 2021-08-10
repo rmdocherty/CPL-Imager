@@ -7,6 +7,7 @@ Created on Fri Jul 30 12:14:46 2021
 """
 from thorlabs_tsi_sdk.tl_camera import TLCamera, Frame
 from PIL import Image
+from rotator import Rotator
 import threading
 try:
     #  For Python 2.7 queue is named Queue
@@ -97,6 +98,7 @@ class CompactImageAcquisitionThread(ImageAcquisitionThread):
         super().__init__(camera)
         self._imaging_LCPl = True
         self._image_queue_2 = queue.Queue(maxsize=2)
+        self._rotator = Rotator("/dev/ttyUSB0")
 
     def get_output_queue_2(self):
         """Getter for the queue object."""
@@ -104,7 +106,8 @@ class CompactImageAcquisitionThread(ImageAcquisitionThread):
         return self._image_queue_2
 
     def _rotate_mount(self, degrees):
-        sleep(0.002) #simulate rotating camera - in actual fn. will need to check rotation done before returning
+        self._rotator.rotate_to_angle(degrees)
+        #sleep(0.002) #simulate rotating camera - in actual fn. will need to check rotation done before returning
 
     def run(self):
         """
@@ -114,7 +117,12 @@ class CompactImageAcquisitionThread(ImageAcquisitionThread):
         switch which queue is being used.
         """
         while not self._stop_event.is_set():
-            self._rotate_mount(90)
+
+            if self._imaging_LCPl is True:
+                self._rotate_mount(0)
+            else:
+                self._rotate_mount(90)
+
             try:
                 frame = self._camera.get_pending_frame_or_null()
                 if frame is not None:

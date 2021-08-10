@@ -34,8 +34,6 @@ class CPL_img_analysis():
         min_br = np.min(img_arr)
         avg_br = np.mean(img_arr)
         std_br = np.std(img_arr) / np.sqrt(len(img_arr))
-        #mode_br = stats.mode(img_arr)
-        #median_br = ndimage.median(img_arr)
         print(f"stats for {self._name}: \n Max is {max_br} \n Min is {min_br} \n Avg is {avg_br} +/- {std_br}")
         return max_br, min_br, avg_br, std_br
 
@@ -45,7 +43,7 @@ class CPL_img_analysis():
 
     def get_histo(self):
         img_arr = self._np_arr
-        histo, edges = np.histogram(img_arr, bins=250, range=(0,250))
+        histo, edges = np.histogram(img_arr, bins=250, range=(0, 250))
         return histo, edges
 
 
@@ -60,16 +58,12 @@ fig, axs = plt.subplots(2, 2)
 for index, CPL in enumerate([min_LCPL, max_LCPL, min_RCPL, max_RCPL]):
     ax = axs[index // 2, index % 2]
 
-    stats = CPL.get_stats()
-    avg, stderr = stats[2], stats[3]
+    statistics = CPL.get_stats()
+    avg, stderr = statistics[2], statistics[3]
 
     histo, edges = CPL.get_histo()
 
-    #ax.set_title(CPL._name)
     ax.hist(x=histo, bins=edges, color=colours[index])
     ax.vlines(x=avg, ymin=0, ymax=35, color="black", ls="--", label=f"Avg={avg:.2f} +/- {stderr:.2f}")
     pretty_subplot(ax, "Pixel value", "Count", CPL._name, 12)
     ax.legend(fontsize=12)
-    #ax.set_xlim(0, 250)
-    
-    
