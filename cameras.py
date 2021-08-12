@@ -97,7 +97,8 @@ class CompactImageAcquisitionThread(ImageAcquisitionThread):
         # type: (TLCamera) -> ImageAcquisitionThread
         super().__init__(camera)
         self._imaging_LCPl = True
-        self._image_queue_2 = queue.Queue(maxsize=2)
+        self._image_queue = queue.Queue(maxsize=1)
+        self._image_queue_2 = queue.Queue(maxsize=1)
         self._rotator = Rotator("/dev/ttyUSB0")
 
     def get_output_queue_2(self):
@@ -107,7 +108,6 @@ class CompactImageAcquisitionThread(ImageAcquisitionThread):
 
     def _rotate_mount(self, degrees):
         self._rotator.rotate_to_angle(degrees)
-        #sleep(0.002) #simulate rotating camera - in actual fn. will need to check rotation done before returning
 
     def run(self):
         """
@@ -117,11 +117,10 @@ class CompactImageAcquisitionThread(ImageAcquisitionThread):
         switch which queue is being used.
         """
         while not self._stop_event.is_set():
-
             if self._imaging_LCPl is True:
-                self._rotate_mount(0)
+                self._rotate_mount(52) #motor is horizontal by default and offset by a few degrees. Also 45 -> 90 for some reason so 52 is approx. vertical
             else:
-                self._rotate_mount(90)
+                self._rotate_mount(4) #4 is approx horizontal due to offset
 
             try:
                 frame = self._camera.get_pending_frame_or_null()
@@ -129,9 +128,10 @@ class CompactImageAcquisitionThread(ImageAcquisitionThread):
                     pil_image = self._get_image(frame)
                     if self._imaging_LCPl is True:
                         iq = self._image_queue
+                        iq.put_nowait(pil_image)
                     else:
                         iq = self._image_queue_2
-                    iq.put_nowait(pil_image)
+                        iq.put_nowait(pil_image)
                     self._imaging_LCPl = not self._imaging_LCPl #toggle bool
             except queue.Full:
                 # No point in keeping this image around when the queue is full, let's skip to the next one

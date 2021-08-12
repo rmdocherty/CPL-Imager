@@ -130,12 +130,15 @@ class LiveViewCanvas(tk.Canvas):
             image1 = self.image_queue1.get_nowait()
             image2 = self.image_queue2.get_nowait()
             unrotated_img = self._cmap.colour_map(image1, image2)
-            self._img_data = unrotated_img.rotate(270) #image right way up - but it does end up stacking vertically rather than horizontally for 2 img setups
-            self._image = ImageTk.PhotoImage(master=self, image=self._img_data)
+            self._img_data = unrotated_img
+            #rotated = unrotated_img.rotate(270)
+            resized = unrotated_img.resize((1600, 1000)) #(w, h)
+            #self._img_data = unrotated_img.rotate(270) #image right way up - but it does end up stacking vertically rather than horizontally for 2 img setups
+            self._image = ImageTk.PhotoImage(master=self, image=resized) # self._img_data
             if (self._image.width() != self._image_width) or (self._image.height() != self._image_height):
                 # resize the canvas to match the new image size
-                self._image_width = self._image.width() / 1
-                self._image_height = self._image.height() / 1  #remove this scaling later!
+                self._image_width = self._image.width()
+                self._image_height = self._image.height()  #remove this scaling later!
                 self.config(width=self._image_width, height=self._image_height)
             self.create_image(0, 0, image=self._image, anchor='nw')
         except queue.Empty:

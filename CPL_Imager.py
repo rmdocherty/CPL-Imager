@@ -118,7 +118,6 @@ class CPL_Imager_One_Camera(CPL_Imager):
             camera_list = sdk.discover_available_cameras()
             print(camera_list)
             with sdk.open_camera(camera_list[0]) as cam1:
-                #cam2 = MockCamera(on=False)
                 self._main_function(cam1)
 
     def _main_function(self, cam):
@@ -153,6 +152,11 @@ class Compact_CPL_Imager(CPL_Imager_One_Camera):
             camera_list = sdk.discover_available_cameras()
             with sdk.open_camera(camera_list[0]) as cam:
                 self._main_function(cam)
+
+    def _gen_widget(self, image_queue1, image_queue2):
+        camera_widget = LiveViewCanvas(parent=self._root, iq1=image_queue1,
+                                       iq2=image_queue2, mode="Raw")
+        return camera_widget
 
     def _gen_compactIAT(self, camera):
         return CompactImageAcquisitionThread(camera)
