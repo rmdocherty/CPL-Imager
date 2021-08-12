@@ -99,7 +99,7 @@ class ColourMapper():
 
         elif self._mode == "g_em":
             cmap = self._cmaps["g_em"]
-            g_em = 2 * (img1 - img2) / (img1 + img2) #from equation
+            g_em = (img1 - img2) / (img1 + img2) #from equation, removed factor of 2 as messes up cmap
             mapped = self._single_cmap(g_em, cmap)
 
         elif self._mode == "DOCP":

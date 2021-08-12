@@ -12,7 +12,7 @@ import serial
 from math import floor
 
 PULSES_PER_DEGREE = 262144 / 360 #defined in docs
-
+OFFSET_DEGREES = 1.7578125
 
 class Rotator():
     """
@@ -35,11 +35,31 @@ class Rotator():
             self.rotate_to_angle(52) #reset pos
         except Exception as error:
             print(f"Error: {error}, please supply a port.")
-
-    def _home_motor(self):
-        command_string = "0ho1"
+    
+    def _send_command(self, command, data):
+        command_string = command + data
         command_byte = str.encode(command_string)
         self._port.write(command_byte)
+
+    def _home_motor(self):
+        command_string = "0ho0"
+        command_byte = str.encode(command_string)
+        self._port.write(command_byte)
+        
+    def _set_jog_size(self, angle):
+        set_angle_string = self._get_set_angle_string(angle)
+        command_string = "0js" + set_angle_string
+        command_byte = str.encode(command_string)
+        self._port.write(command_byte)
+    
+    def _get_offset(self):
+        command_byte =str.encode("0go")
+        self._port.write(command_byte)
+        offset_hex = self._port.readline()[2:]
+        offset_hex_string = '0x' + str.encode(offset_hex)
+        offset_int = int(offset_hex_string, base=16)
+        offset_string = str(offset_int)
+        print(f"Offset is {offset_string} degrees")
 
     def _get_set_angle_string(self, angle):
         """Convert angle to # of pulses and convert that to hex string."""
