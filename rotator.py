@@ -5,8 +5,8 @@ Created on Fri Aug  6 14:33:00 2021
 
 @author: ronan
 """
-from pyftdi.ftdi import Ftdi
-import pyftdi.serialext
+#from pyftdi.ftdi import Ftdi
+#import pyftdi.serialext
 from time import sleep
 import serial
 from math import floor
