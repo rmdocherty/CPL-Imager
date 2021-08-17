@@ -32,6 +32,8 @@ class Rotator():
             self._port.reset_output_buffer()
             sleep(0.05)
             self._home_motor()
+            #self._optimize_motor()
+            #self._freq_search()
             self._set_jog_size(45)
             self.rotate_to_angle(0) #reset pos -should be 52
         except Exception as error:
@@ -70,7 +72,7 @@ class Rotator():
         """Convert angle to # of pulses and convert that to hex string."""
         pulses = floor(angle * PULSES_PER_DEGREE) #should i use floor or ceil?
         int_string = hex(pulses)[2:].zfill(8)
-        print(int_string)
+        #print(int_string)
         return int_string.upper()
 
     def _send_get_status(self):
@@ -81,8 +83,8 @@ class Rotator():
         while done is False:
             self._send_get_status()
             data = self._port.readline()
-            print(data)
-            if data.decode()  == "AGS0":
+            #print(data)
+            if data.decode()[:5]  == "0GS00":
                 done = True
             else:
                 pass
@@ -93,7 +95,7 @@ class Rotator():
         rotated = False
         while rotated is False: #block until device says has rotated to specified angle
             data = self._port.readline()
-            print(data)
+            #print(data)
             if data.decode()[:3] == "0PO": #might be able to just set if data[:3] == "APO" if this doesn't work
                 rotated = True
             else:
@@ -123,13 +125,13 @@ class Rotator():
         self._check_angle()
         return 0
         
-
-r = Rotator("/dev/ttyUSB0")
-r.rotate_to_angle(0)
-while True:
-    #r.jog_forward()
-    r.rotate_to_angle(90)
-    sleep(2)
-    r.rotate_to_angle(0)
-    #r.jog_backward()
-    sleep(2)
+#58 degrees = vertical, 9 = horizontal
+# r = Rotator("/dev/ttyUSB0")
+# r.rotate_to_angle(0)
+# while True:
+#     #r.jog_forward()
+#     r.rotate_to_angle(58)
+#     sleep(2)
+#     r.rotate_to_angle(9)
+#     #r.jog_backward()
+#     sleep(2)

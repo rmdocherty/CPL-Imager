@@ -117,13 +117,11 @@ class CompactImageAcquisitionThread(ImageAcquisitionThread):
         switch which queue is being used.
         """
         while not self._stop_event.is_set():
-            self._rotator.jog_forward()
+            #self._rotator.jog_forward()
             if self._imaging_LCPl is True:
-                #self._rotate_mount(52) #motor is horizontal by default and offset by a few degrees. Also 45 -> 90 for some reason so 52 is approx. vertical
-                self._rotator.jog_forward()
+                self._rotate_mount(58) #motor is horizontal by default and offset by a few degrees. Also 45 -> 90 for some reason so 52 is approx. vertical
             else:
-                #self._rotate_mount(4) #4 is approx horizontal due to offset
-                self._rotator.jog_backward()
+                self._rotate_mount(9) # approx horizontal due to offset
 
             try:
                 frame = self._camera.get_pending_frame_or_null()
