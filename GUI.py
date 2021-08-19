@@ -131,7 +131,6 @@ class LiveViewCanvas(tk.Canvas):
             image2 = self.image_queue2.get_nowait()
             unrotated_img = self._cmap.colour_map(image1, image2)
             self._img_data = unrotated_img
-            #rotated = unrotated_img.rotate(270)
             resized = unrotated_img.resize((1500, 900)) #(w, h)
             #self._img_data = unrotated_img.rotate(270) #image right way up - but it does end up stacking vertically rather than horizontally for 2 img setups
             self._image = ImageTk.PhotoImage(master=self, image=resized) # self._img_data

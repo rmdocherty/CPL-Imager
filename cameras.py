@@ -119,8 +119,10 @@ class CompactImageAcquisitionThread(ImageAcquisitionThread):
         while not self._stop_event.is_set():
             #self._rotator.jog_forward()
             if self._imaging_LCPl is True:
+                #pass
                 self._rotate_mount(58) #motor is horizontal by default and offset by a few degrees. Also 45 -> 90 for some reason so 52 is approx. vertical
             else:
+                #pass
                 self._rotate_mount(9) # approx horizontal due to offset
 
             try:

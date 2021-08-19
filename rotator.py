@@ -34,8 +34,8 @@ class Rotator():
             self._home_motor()
             #self._optimize_motor()
             #self._freq_search()
-            self._set_jog_size(45)
-            self.rotate_to_angle(0) #reset pos -should be 52
+            #self._set_jog_size(45)
+            self.rotate_to_angle(58) #reset pos -should be 52
         except Exception as error:
             print(f"Error: {error}, please supply a port.")
     
