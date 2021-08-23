@@ -7,7 +7,7 @@ Created on Fri Jul 30 10:51:34 2021
 """
 #TODO: consider how it works on Windows by looking at Thorlabs examples
 from thorlabs_tsi_sdk.tl_camera import TLCameraSDK
-from cameras import MockCamera, ImageAcquisitionThread, MockCompact, CompactImageAcquisitionThread, SingleCamera
+from cameras import ImageAcquisitionThread, CompactImageAcquisitionThread, SingleCamera
 from GUI import CPL_Viewer, LiveViewCanvas
 try:
     #  For python 2.7 tkinter is named Tkinter
@@ -177,59 +177,14 @@ class Compact_CPL_Imager(CPL_Imager_One_Camera):
         print("Closing resources...")
 
 
-class Mock_Compact_Imager(Compact_CPL_Imager):
-
-    def run(self):
-        self._camera_handedness = "lcpl"
-        cam = MockCompact()
-        self._main_function(cam)
-
-    def _gen_compactIAT(self, camera):
-        return camera
-
-    def _start_camera(self, cam):
-        pass
-
-
-class CPL_Imager_No_Camera(CPL_Imager):
-    """
-    CPL_Imager_No_Camera.
-
-    Another child class of CPL_Imager, designed for use with no cameras i.e as
-    a demo. Reallt just an extension of the ideas of One_Camera.
-    """
-
-    def _gen_image_acquisition_threads(self, cam1, cam2):
-        return (cam1, cam2)
-
-    def _start_cameras(self, cam1, cam2):
-        pass
-
-    def run(self):
-        cam1 = MockCamera()
-        cam2 = MockCamera()
-        self._main_function(cam1, cam2)
-
-
 if __name__ == "__main__":
     camera_list = TLCameraSDK().discover_available_cameras()
-    optical_layout = input("Beamsplitter or Compact design? ")
-    if len(camera_list) == 2:
+    if len(camera_list) == 2: #beamsplitter design
         imager = CPL_Imager()
-    elif len(camera_list) == 1:
-        if optical_layout in ["beamsplitter", "Beamsplitter", "BEAMSPLITTER", "b", "B", "1"]:
-            imager = CPL_Imager_One_Camera()
-        elif optical_layout in ["compact", "Compact", "Compact design", "COMPACT DESIGN", "COMPACT", "c", "C", "cd", "CD", "2"]:
-            imager = Compact_CPL_Imager()
-        else:
-            raise Exception("Please choose either the beamsplitter or compact design.")
+    elif len(camera_list) == 1: #compact design
+        imager = Compact_CPL_Imager()
     elif len(camera_list) == 0:
-        if optical_layout in ["beamsplitter", "Beamsplitter", "BEAMSPLITTER", "b", "B", "1"]:
-            imager = CPL_Imager_No_Camera()
-        elif optical_layout in ["compact", "Compact", "Compact design", "COMPACT DESIGN", "COMPACT", "c", "C", "cd", "CD", "2"]:
-            imager = Mock_Compact_Imager()
-        else:
-            raise Exception("Please choose either the beamsplitter or compact design.")
+        raise Exception("Please plug in at least one camera")
     else:
         raise Exception("Too many cameras!")
     print(f"Operating with {len(camera_list)} cameras!")

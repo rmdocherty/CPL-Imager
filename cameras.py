@@ -19,6 +19,8 @@ from time import sleep
 np.random.seed(1)
 IMG_HEIGHT = 300 # can go at least as high as 1000x1000 - don't know what upper limit is!
 IMG_WIDTH = 300
+HORIZONTAL = 11.7
+VERTICAL = 60.7
 
 
 class ImageAcquisitionThread(threading.Thread):
@@ -120,11 +122,11 @@ class CompactImageAcquisitionThread(ImageAcquisitionThread):
             #self._rotator.jog_forward()
             if self._imaging_LCPl is True:
                 #pass
-                self._rotate_mount(58) #motor is horizontal by default and offset by a few degrees. Also 45 -> 90 for some reason so 52 is approx. vertical
+                self._rotate_mount(HORIZONTAL) #motor is horizontal by default and offset by a few degrees. Also 45 -> 90 for some reason so 52 is approx. vertical
             else:
                 #pass
-                self._rotate_mount(9) # approx horizontal due to offset
-
+                self._rotate_mount(VERTICAL) # approx horizontal due to offset
+            #sleep(1)
             try:
                 frame = self._camera.get_pending_frame_or_null()
                 if frame is not None:
@@ -176,83 +178,3 @@ class SingleCamera(CompactImageAcquisitionThread):
         print("Image acquisition has stopped")
         self._camera.disarm()
         self._camera.dispose()
-
-
-class MockCamera(threading.Thread):
-    """
-    MockCamera.
-
-    Fake class designed to emulate action of the ImageAcquistionThread in
-    live_view.py. Generates random array of fixed width and throws it onto a
-    queue to be grabbed and decoded by LiveViewCanvas.
-    """
-
-    def __init__(self, on=True):
-        super().__init__()
-        self._image_queue = queue.Queue(maxsize=2)
-        self._stop_event = threading.Event()
-        self._on = on
-
-    def get_output_queue(self):
-        """Getter method for output queue."""
-        # type: (type(None)) -> queue.Queue
-        return self._image_queue
-
-    def stop(self):
-        """Thread stopping fn."""
-        self._stop_event.set()
-
-    def run(self):
-        """If on throw random np array into queue, if off throw None into queue."""
-        while not self._stop_event.is_set():
-            try:
-                if self._on is True:
-                    LCPL = np.random.random((IMG_HEIGHT, IMG_WIDTH))
-                    self._image_queue.put_nowait(LCPL)
-                else:
-                    self._image_queue.put_nowait(None)
-            except queue.Full:
-                # No point in keeping this image around when the queue is full, let's skip to the next one
-                pass
-            except Exception as error:
-                print("Encountered error: {error}, image acquisition will stop.".format(error=error))
-                break
-        print("Image acquisition has stopped")
-
-
-class MockCompact(MockCamera):
-    """Mock version of CompactIAT."""
-
-    def __init__(self, on=True):
-        super().__init__()
-        self._image_queue_2 = queue.Queue(maxsize=2)
-        self._on = on
-        self._imaging_LCPl = True
-
-    def get_output_queue_2(self):
-        """Getter for the queue object."""
-        # type: (type(None)) -> queue.Queue
-        return self._image_queue_2
-
-    def _rotate_mount(self, degrees):
-        sleep(0.02) #simulate rotating camera - in actual fn. will need to check rotation done before returning
-
-    def run(self):
-        """Same as CompactIAT but generates random data rather than taking images."""
-        while not self._stop_event.is_set():
-            self._rotate_mount(90)
-            try:
-                pil_image = np.random.random((IMG_HEIGHT, IMG_WIDTH))
-                if self._imaging_LCPl is True:
-                    iq = self._image_queue
-                else:
-                    iq = self._image_queue_2
-                iq.put_nowait(pil_image)
-                self._imaging_LCPl = not self._imaging_LCPl #toggle bool
-            except queue.Full:
-                # No point in keeping this image around when the queue is full, let's skip to the next one
-                pass
-            except Exception as error:
-                print("Encountered error: {error}, image acquisition will stop.".format(error=error))
-                break
-        print("Image acquisition has stopped")
