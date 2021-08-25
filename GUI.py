@@ -7,6 +7,7 @@ Created on Fri Jul 30 11:52:28 2021
 """
 import tkinter as tk
 from colourmapper import ColourMapper
+from helper import clearQueue
 from PIL import ImageTk
 import numpy as np
 try:
@@ -15,6 +16,7 @@ try:
 except ImportError:
     import queue
 from datetime import datetime
+from time import sleep
 
 
 class CPL_Viewer(tk.Frame):
@@ -30,10 +32,14 @@ class CPL_Viewer(tk.Frame):
 
     def __init__(self, master=None):
         tk.Frame.__init__(self, master)
+        self._live = True
 
     def set_camera_widget(self, camera_widget_object):
         self._camera_widget = camera_widget_object
         self._createWidgets()
+
+    def set_control_queue(self, cq):
+        self._CQ = cq
 
     def _switch_to_raw(self):
         self._camera_widget.set_cmap_mode("Raw")
@@ -45,7 +51,26 @@ class CPL_Viewer(tk.Frame):
         self._camera_widget.set_cmap_mode("g_em")
 
     def _take_photo(self):
+        clearQueue(self._CQ)
+        if self._live is False:
+            print("Taking static photo")
+            self._CQ.put("Photo", block=True, timeout=0.5)
+            self._camera_widget._get_image()
+            #self._CQ.put_nowait("Off")
         self._camera_widget.take_photo()
+        
+    def _toggle_live(self):
+        clearQueue(self._CQ)
+        #while not self._CQ.empty():
+        #    self._CQ.get()
+        if self._live is True:
+            self._live = False
+            print("Live view off")
+            self._CQ.put("Off", block=True, timeout=0.01)
+        else:
+            self._live = True
+            print("Live view on")
+            self._CQ.put("Live", block=True, timeout=0.01)
 
     def _cmap_window(self):
         self._cmap_menu = tk.Toplevel()
@@ -82,13 +107,14 @@ class CPL_Viewer(tk.Frame):
 
     def _createWidgets(self):
         photo = tk.Button(text="Take Photo", command=self._take_photo)
+        live = tk.Button(text="Toggle Video", command=self._toggle_live)
         cmap_btn = tk.Button(text="Set Cmaps", command=self._cmap_window)
         label = tk.Label(text="Modes:")
 
         raw_btn = tk.Button(text="Raw", command=self._switch_to_raw)
         DOCP_btn = tk.Button(text="DOCP", command=self._switch_to_DOCP)
         g_em_btn = tk.Button(text="g_em", command=self._switch_to_g_em)
-        btns = [photo, cmap_btn, label, raw_btn, DOCP_btn, g_em_btn]
+        btns = [photo, live, cmap_btn, label, raw_btn, DOCP_btn, g_em_btn]
         pad = 1
         for index, b in enumerate(btns):
             b.grid(column=0, row=index, ipadx=pad, ipady=pad, padx=pad, pady=pad)

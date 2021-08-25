@@ -165,6 +165,7 @@ class Compact_CPL_Imager(CPL_Imager_One_Camera):
         camera_widget = self._gen_widget(image_acquisition_thread.get_output_queue(),
                                          image_acquisition_thread.get_output_queue_2())
         self._GUI.set_camera_widget(camera_widget)
+        self._GUI.set_control_queue(image_acquisition_thread._control_queue)
         self._start_camera(cam)
         image_acquisition_thread.start()
 
