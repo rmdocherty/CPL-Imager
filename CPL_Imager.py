@@ -90,7 +90,6 @@ class CPL_Imager_One_Camera(CPL_Imager):
     """
 
     def _gen_image_acquisition_threads(self, cam1, cam2):
-        # MockCameras are really a Mock thread so don't need to operate on them as we do for cameras.
         return (ImageAcquisitionThread(cam1), cam2)
 
     def _gen_widget(self, image_queue1, image_queue2):

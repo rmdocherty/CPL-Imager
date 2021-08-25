@@ -13,6 +13,8 @@ from math import floor
 
 PULSES_PER_DEGREE = 262144 / 360 #defined in docs
 OFFSET_DEGREES = 1.7578125
+HORIZONTAL = 11.7
+VERTICAL = 60.7
 
 class Rotator():
     """
@@ -35,31 +37,31 @@ class Rotator():
             #self._optimize_motor()
             #self._freq_search()
             #self._set_jog_size(45)
-            self.rotate_to_angle(60.7) #reset pos -should be 52
+            self.rotate_to_angle(HORIZONTAL) #reset pos -should be 52
         except Exception as error:
             print(f"Error: {error}, please supply a port.")
-    
+
     def _send_command(self, command, data=""):
         command_string = command + data
         command_byte = str.encode(command_string, encoding='ASCII')
         self._port.write(command_byte)
-    
+
     def _freq_search(self):
         self._send_command("0s1")
         self._check_status()
         self._send_command("0us")
-    
+
     def _optimize_motor(self):
         self._send_command("0om")
         self._check_status()
 
     def _home_motor(self):
         self._send_command("0ho0")
-        
+
     def _set_jog_size(self, angle):
         set_angle_string = self._get_set_angle_string(angle)
         self._send_command("0sj", set_angle_string)
-    
+
     def _get_offset(self):
         self._send_command("0go")
         offset_hex = self._port.readline()[2:]
@@ -77,14 +79,14 @@ class Rotator():
 
     def _send_get_status(self):
         self._send_command("0gs")
-    
+
     def _check_status(self):
         done = False
         while done is False:
             self._send_get_status()
             data = self._port.readline()
             #print(data)
-            if data.decode()[:5]  == "0GS00":
+            if data.decode()[:5] == "0GS00":
                 done = True
             else:
                 pass
@@ -113,18 +115,18 @@ class Rotator():
         self._send_command("0fw")
         self._check_angle()
         return 0
-    
+
     def jog_backward(self):
         self._send_command("0bw")
         self._check_angle()
         return 0
-    
+
     def rotate_by_angle(self, angle):
         set_angle_str = self._get_set_angle_string(angle)
         self._send_command("0mr", data=set_angle_str)
         self._check_angle()
         return 0
-        
+
 #58 degrees = vertical, 9 = horizontal
 # r = Rotator("/dev/ttyUSB0")
 # r.rotate_to_angle(0)

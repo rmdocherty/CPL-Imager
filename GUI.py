@@ -8,6 +8,7 @@ Created on Fri Jul 30 11:52:28 2021
 import tkinter as tk
 from colourmapper import ColourMapper
 from PIL import ImageTk
+import numpy as np
 try:
     #  For Python 2.7 queue is named Queue
     import Queue as queue
@@ -38,7 +39,6 @@ class CPL_Viewer(tk.Frame):
         self._camera_widget.set_cmap_mode("Raw")
 
     def _switch_to_DOCP(self):
-
         self._camera_widget.set_cmap_mode("DOCP")
 
     def _switch_to_g_em(self):
@@ -129,6 +129,7 @@ class LiveViewCanvas(tk.Canvas):
         try:
             image1 = self.image_queue1.get_nowait()
             image2 = self.image_queue2.get_nowait()
+            self._np_array = np.hstack((image1, image2))
             unrotated_img = self._cmap.colour_map(image1, image2)
             self._img_data = unrotated_img
             resized = unrotated_img.resize((1500, 900)) #(w, h)
@@ -149,3 +150,4 @@ class LiveViewCanvas(tk.Canvas):
         timestamp = datetime.now()
         timestamp_string = timestamp.strftime("%d-%m-%y_%H:%M:%S_%f")
         self._img_data.save("photos/" + timestamp_string, format="bmp")
+        np.save("photos/" + timestamp_string, self._np_array)
