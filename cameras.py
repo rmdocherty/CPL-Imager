@@ -142,24 +142,22 @@ class CompactImageAcquisitionThread(ImageAcquisitionThread):
                 iq2 = self._image_queue_2
 
                 #clearQueue(iq1)
-                #clearQueue(iq2)
+                #clearQueue(iq2) clearing queue breaks image updating
          
                 self._rotate_mount(rotator.HORIZONTAL)
                 frame = None
                 while frame is None:
-                    frame = self._camera.get_pending_frame_or_null() #block till iq
+                    frame = self._camera.get_pending_frame_or_null() #block till img
                 pil_image = self._get_image(frame)
                 iq1.put(pil_image, block=True, timeout=0.1)
 
                 self._rotate_mount(rotator.VERTICAL)
                 frame2 = None
                 while frame2 is None:
-                    frame2 = self._camera.get_pending_frame_or_null() #block till iq
+                    frame2 = self._camera.get_pending_frame_or_null() #block till img
                 pil_image2 = self._get_image(frame2)
                 iq2.put(pil_image2, block=True, timeout=0.1)
                 print("taken photo")
-                #else:
-                 #   print("Frame is none for iq2")
 
                 self._control_queue.put("Off", block=True, timeout=0.01)
             else:

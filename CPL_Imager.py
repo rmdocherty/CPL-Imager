@@ -184,7 +184,8 @@ if __name__ == "__main__":
     elif len(camera_list) == 1: #compact design
         imager = Compact_CPL_Imager()
     elif len(camera_list) == 0:
-        raise Exception("Please plug in at least one camera")
+        #raise Exception("Please plug in at least one camera")
+        pass
     else:
         raise Exception("Too many cameras!")
     print(f"Operating with {len(camera_list)} cameras!")
