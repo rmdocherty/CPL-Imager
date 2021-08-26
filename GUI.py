@@ -122,7 +122,8 @@ class CPL_Viewer(tk.Frame):
         RCPL_text = tk.Label(self._calibrate_menu, text="RCPL in RPS:").grid(column=0, row=3)
         correction_map = tk.Button(self._calibrate_menu, text="Generate correction", command=self._gen_correction).grid(column=0, row=4, columnspan=2)
 
-        ROI_placer = tk.Button(self._calibrate_menu, text="Set ROI", command=self._set_ROI).grid(column=0, row=5, columnspan=2)
+        ROI_placer = tk.Button(self._calibrate_menu, text="Place ROI", command=self._place_ROI).grid(column=0, row=5)
+        ROI_setter = tk.Button(self._calibrate_menu, text="Set ROI", command=self._set_ROI).grid(column=1, row=5)
 
         finish_calibrate = tk.Button(self._calibrate_menu, text="Finish", command=self._finish_calibrate).grid(column=0, row=6, columnspan=2)
         self._calibrate_menu_text_fields = [threshold, LCPL_uniform, RCPL_uniform]
@@ -161,11 +162,20 @@ class CPL_Viewer(tk.Frame):
         RCPL_mask = np.where(RCPL_data > zero_thresh, ref_RCPL_intensity / RCPL_data, 0)
         self._camera_widget.set_masks(LCPL_mask, RCPL_mask)
 
+    def _place_ROI(self):
+        self._live = False
+        print("Live view off")
+        self._CQ.put_nowait("Off")
+        self._camera_widget._ROI = []
+        self._camera_widget._set_ROI = True
+
     def _set_ROI(self):
-        pass
+        clearQueue(self._CQ)
+        self._CQ.put_nowait("ROI")
+        self._CQ.put_nowait(self._camera_widget._ROI)
 
     def _finish_calibrate(self):
-        pass
+        self.destroy()
 
     def _createWidgets(self):
         photo = tk.Button(text="Take Photo", command=self._take_photo)
@@ -205,13 +215,28 @@ class LiveViewCanvas(tk.Canvas):
         self.grid(column=1, row=0, columnspan=5, rowspan=5)
         self._cmap = ColourMapper(mode)
         self._img_data = [] # need variable to store image in as can't seem to save directly from a ImageTk.PhotoImage Object
-        self._get_image()
+
         self._LCPL_mask = np.array([1])
         self._RCPL_mask = np.array([1])
+
+        self._ROI = []
+        self._set_ROI = False
+        self.bind("<Button-1>", self._onclick)
+
+        self._get_image()
 
     def set_masks(self, LCPL, RCPL):
         self._LCPL_mask = LCPL
         self._RCPL_mask = RCPL
+
+    def _onclick(self, event):
+        if len(self._ROI) < 2 and self._set_ROI is True:
+            self.create_text(event.x, event.y, anchor=tk.W, font="Arial", text="X")
+            self._ROI.append((event.x, event.y))
+            print(f"clicked at {event.x}, {event.y}")
+        elif len(self._ROI) == 2:
+            self._ROI = [] 
+
 
     def set_cmap_mode(self, mode):
         """Setter for the Cmap mode."""

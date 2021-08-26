@@ -42,6 +42,17 @@ class ImageAcquisitionThread(threading.Thread):
         self._camera.image_poll_timeout_ms = 0  # Do not want to block for long periods of time. was 0!!!
         self._image_queue = queue.Queue(maxsize=2)
         self._stop_event = threading.Event()
+        self._get_roi_from_file()
+
+    def _get_roi_from_file(self):
+        try:
+            f = open("roi_config.txt")
+            coords = [int(i.strip('\n')) for i in f.readlines()]
+            ROI = (coords[0], coords[1], coords[2], coords[3])
+            print(f"Setting ROI as {ROI}")
+            self._camera.roi = ROI
+        except (IOError, ValueError):
+            pass
 
     def get_output_queue(self):
         """Getter for the queue object."""
@@ -97,7 +108,7 @@ class CompactImageAcquisitionThread(ImageAcquisitionThread):
         self._image_queue_2 = queue.Queue(maxsize=1)
         self._rotator = rotator.Rotator("/dev/ttyUSB0")
         self._mode = "Live"
-        self._control_queue = queue.Queue(maxsize=1)
+        self._control_queue = queue.Queue(maxsize=2)
 
     def get_output_queue_2(self):
         """Getter for the queue object."""
@@ -160,6 +171,16 @@ class CompactImageAcquisitionThread(ImageAcquisitionThread):
                 print("taken photo")
 
                 self._control_queue.put("Off", block=True, timeout=0.01)
+            elif self._mode == "ROI":
+                try:
+                    ROI_list = self._control_queue.get_nowait()
+                    if type(ROI_list) != list:
+                        raise ValueError
+                    ROI = (ROI_list[0][0], ROI_list[0][1], ROI_list[1][0], ROI_list[1][1])
+                    print(f"Setting ROI as {ROI}")
+                    self._camera.roi = ROI
+                except (queue.Empty, ValueError):
+                    pass
             else:
                 pass
         print("Image acquisition has stopped")
