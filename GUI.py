@@ -109,46 +109,21 @@ class CPL_Viewer(tk.Frame):
         self._calibrate_menu = tk.Toplevel()
         self._calibrate_menu.title("Calibration")
 
-        threshold_text = tk.Label(self._calibrate_menu, text="Saturation threshold (%):").grid(column=0, row=0)
-        threshold = tk.Text(self._calibrate_menu, height=2, width=30)
-        threshold.grid(column=1, row=0)
-        check_intensity = tk.Button(self._calibrate_menu, text="Check intensity", command=self._check_intensity).grid(column=0, row=1, columnspan=2)
-
         LCPL_uniform = tk.Text(self._calibrate_menu, height=2, width=30)
-        LCPL_uniform.grid(column=1, row=2)
-        LCPL_text = tk.Label(self._calibrate_menu, text="LCPL in RPS:").grid(column=0, row=2)
+        LCPL_uniform.grid(column=1, row=0)
+        LCPL_text = tk.Label(self._calibrate_menu, text="LCPL in RPS:").grid(column=0, row=0)
         RCPL_uniform = tk.Text(self._calibrate_menu, height=2, width=30)
-        RCPL_uniform.grid(column=1, row=3)
-        RCPL_text = tk.Label(self._calibrate_menu, text="RCPL in RPS:").grid(column=0, row=3)
-        correction_map = tk.Button(self._calibrate_menu, text="Generate correction", command=self._gen_correction).grid(column=0, row=4, columnspan=2)
+        RCPL_uniform.grid(column=1, row=1)
+        RCPL_text = tk.Label(self._calibrate_menu, text="RCPL in RPS:").grid(column=0, row=1)
+        correction_map = tk.Button(self._calibrate_menu, text="Generate correction", command=self._gen_correction).grid(column=0, row=2, columnspan=2)
 
-        ROI_placer = tk.Button(self._calibrate_menu, text="Place ROI", command=self._place_ROI).grid(column=0, row=5)
-        ROI_setter = tk.Button(self._calibrate_menu, text="Set ROI", command=self._set_ROI).grid(column=1, row=5)
-
-        finish_calibrate = tk.Button(self._calibrate_menu, text="Finish", command=self._finish_calibrate).grid(column=0, row=6, columnspan=2)
-        self._calibrate_menu_text_fields = [threshold, LCPL_uniform, RCPL_uniform]
+        finish_calibrate = tk.Button(self._calibrate_menu, text="Finish", command=self._finish_calibrate).grid(column=0, row=3, columnspan=2)
+        self._calibrate_menu_text_fields = [LCPL_uniform, RCPL_uniform]
     
-    def _check_intensity(self):
-        thresh_btn = self._calibrate_menu_text_fields[0]
-        try:
-            thresh_text = thresh_btn.get("1.0", "end-1c")
-            threshold_percent = int(thresh_text)
-        except (ValueError, AttributeError):
-            threshold_percent = 10
-        data = self._camera_widget._np_array
-        non_zero = np.where(data > 0)[0] #region where intensity isn't zero
-        saturated = np.where(data >= 1)[0] #regions where pixel value is 1
-        saturation_percent = 100 * len(saturated) / len(non_zero)
-        print(saturation_percent, len(saturated), len(non_zero))
-        if saturation_percent > threshold_percent:
-            tk.messagebox.showwarning(title="Saturation Calibration", message=f"{saturation_percent}% of non-zero regions are saturated, consider lowering intensity.")
-        else:
-            tk.messagebox.showinfo(title="Saturation Calibration", message=f"Image below saturation threshold ({threshold_percent}%)")
-
     def _gen_correction(self):
         data = self._camera_widget._np_array
-        LCPL_btn = self._calibrate_menu_text_fields[1]
-        RCPL_btn = self._calibrate_menu_text_fields[2]
+        LCPL_btn = self._calibrate_menu_text_fields[0]
+        RCPL_btn = self._calibrate_menu_text_fields[1]
         zero_thresh = 0.2
         try:
             ref_LCPL_intensity = float(LCPL_btn.get("1.0", "end-1c"))
@@ -162,24 +137,6 @@ class CPL_Viewer(tk.Frame):
         LCPL_mask = np.where(LCPL_data > zero_thresh, ref_LCPL_intensity / LCPL_data, 0)
         RCPL_mask = np.where(RCPL_data > zero_thresh, ref_RCPL_intensity / RCPL_data, 0)
         self._camera_widget.set_masks(LCPL_mask, RCPL_mask)
-
-    def _place_ROI(self):
-        self._live = False
-        print("Live view off")
-        self._CQ.put_nowait("Off")
-        self._camera_widget._ROI = []
-        self._camera_widget._set_ROI = True
-
-    def _set_ROI(self):
-        ROI = self._camera_widget._ROI
-        if len(ROI) != 2:
-            return
-        coords = [ROI[0][0], ROI[0][1], ROI[1][0], ROI[1][1]]
-        parsed = [str(i) for i in coords]
-        with open("roi_config.txt", "w") as f:
-            for p in parsed:
-                f.write(f"{p}\n")
-        tk.messagebox.showinfo(title="ROI Set", message=f"New ROI set, restart app to see changes. \n {ROI}")
 
     def _finish_calibrate(self):
         self._calibrate_menu.destroy()
@@ -226,9 +183,6 @@ class LiveViewCanvas(tk.Canvas):
         self._LCPL_mask = np.array([1])
         self._RCPL_mask = np.array([1])
 
-        self._ROI = []
-        self._set_ROI = False
-        self.bind("<Button-1>", self._onclick)
         self._mode = "Raw"
         self._sizes = {"Raw": (360, 180), "DOCP": (180, 180), "g_em": (180, 180)}
 
@@ -237,17 +191,6 @@ class LiveViewCanvas(tk.Canvas):
     def set_masks(self, LCPL, RCPL):
         self._LCPL_mask = LCPL
         self._RCPL_mask = RCPL
-
-    def _onclick(self, event):
-        if len(self._ROI) < 2 and self._set_ROI is True:
-            self.create_text(event.x, event.y, anchor=tk.W, font="Arial", text="X")
-            self._ROI.append((event.x, event.y))
-            print(f"clicked at {event.x}, {event.y}")
-            self._set_ROI = False
-        elif len(self._ROI) == 2:
-            self._ROI = []
-        else:
-            None
 
     def set_cmap_mode(self, mode):
         """Setter for the Cmap mode."""

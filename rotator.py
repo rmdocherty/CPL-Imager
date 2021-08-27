@@ -132,8 +132,8 @@ class Rotator():
 # r.rotate_to_angle(0)
 # while True:
 #     #r.jog_forward()
-#     r.rotate_to_angle(60.7)
+#     r.rotate_to_angle(HORIZONTAL)
 #     sleep(2)
-#     r.rotate_to_angle(11.7)
+#     r.rotate_to_angle(VERTICAL)
 #     #r.jog_backward()
 #     sleep(2)
