@@ -129,7 +129,6 @@ if __name__ == "__main__":
     with TLCameraSDK() as sdk:
         camera_list = sdk.discover_available_cameras()
         with sdk.open_camera(camera_list[0]) as camera:
-            print("Generating app...")
             root = tk.Tk()
             root.title("ROI calibration")
             image_acquisition_thread = ImageAcquisitionThread(camera, ROI)
@@ -140,21 +139,44 @@ if __name__ == "__main__":
             camera.arm(2)
             camera.issue_software_trigger()
 
-            print("Starting image acquisition thread...")
             image_acquisition_thread.start()
 
-            print("App starting")
             root.mainloop()
 
-            print("Waiting for image acquisition thread to finish...")
             image_acquisition_thread.stop()
             image_acquisition_thread.join()
 
-            print("Closing resources...")
     confirm = input("Is ROI acceptable (y/n)?")
     if confirm.lower() in ["y", "yes", "1"]:
         with open("roi_config.txt", "w") as f:
             for p in parsed:
                 f.write(f"{p}\n")
         print("Written new ROI to file!")
-    print("App terminated. Goodbye!")
+    
+    
+"""
+    def _onclick(self, event):
+        if len(self._ROI) < 2 and self._set_ROI is True:
+            self.create_text(event.x, event.y, anchor=tk.W, font="Arial", text="X")
+            self._ROI.append((event.x, event.y))
+            print(f"clicked at {event.x}, {event.y}")
+        elif len(self._ROI) == 2:
+            self._ROI = [] 
+            
+            self._ROI = []
+        self._set_ROI = False
+        self.bind("<Button-1>", self._onclick)
+
+    def _place_ROI(self):
+        self._live = False
+        print("Live view off")
+        self._CQ.put_nowait("Off")
+        self._camera_widget._ROI = []
+        self._camera_widget._set_ROI = True
+
+    def _set_ROI(self):
+        clearQueue(self._CQ)
+        self._CQ.put_nowait("ROI")
+        self._CQ.put_nowait(self._camera_widget._ROI)
+"""
+    

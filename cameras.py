@@ -171,16 +171,7 @@ class CompactImageAcquisitionThread(ImageAcquisitionThread):
                 print("taken photo")
 
                 self._control_queue.put("Off", block=True, timeout=0.01)
-            elif self._mode == "ROI":
-                try:
-                    ROI_list = self._control_queue.get_nowait()
-                    if type(ROI_list) != list:
-                        raise ValueError
-                    ROI = (ROI_list[0][0], ROI_list[0][1], ROI_list[1][0], ROI_list[1][1])
-                    print(f"Setting ROI as {ROI}")
-                    self._camera.roi = ROI
-                except (queue.Empty, ValueError):
-                    pass
+
             else:
                 pass
         print("Image acquisition has stopped")

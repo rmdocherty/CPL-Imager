@@ -100,7 +100,7 @@ class ColourMapper():
         elif self._mode == "g_em":
             cmap = self._cmaps["g_em"]
             g_em = (img1 - img2) / (img1 + img2) #from equation, ignore factor of 2
-            g_em = (g_em + 1) / 2 #rescale from -1,+1 to 0,+1 for cmapping
+            g_em = (-g_em + 1) / 2 #rescale from -1,+1 to 0,+1 for cmapping
             mapped = self._single_cmap(g_em, cmap)
 
         elif self._mode == "DOCP":
@@ -113,7 +113,7 @@ class ColourMapper():
 
         out = Image.fromarray(mapped) #convert to PIL Image
         if debug is True:
-            out.show() #see what's going on
+            out.show() #see what's going on -get rid of later
         return out
 
     def _single_cmap(self, img, cmap_string):

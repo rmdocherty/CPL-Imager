@@ -156,8 +156,9 @@ class CPL_Viewer(tk.Frame):
         except (ValueError, AttributeError): #assume a 50/50 split state (45 deg)
             ref_LCPL_intensity = 0.5
             ref_RCPL_intensity = 0.5
-        LCPL_data = data[:, :1440]
-        RCPL_data = data[:, 1440:]
+        half_index = data.shape[1] // 2
+        LCPL_data = data[:, :half_index]
+        RCPL_data = data[:, half_index:]
         LCPL_mask = np.where(LCPL_data > zero_thresh, ref_LCPL_intensity / LCPL_data, 0)
         RCPL_mask = np.where(RCPL_data > zero_thresh, ref_RCPL_intensity / RCPL_data, 0)
         self._camera_widget.set_masks(LCPL_mask, RCPL_mask)
@@ -170,12 +171,18 @@ class CPL_Viewer(tk.Frame):
         self._camera_widget._set_ROI = True
 
     def _set_ROI(self):
-        clearQueue(self._CQ)
-        self._CQ.put_nowait("ROI")
-        self._CQ.put_nowait(self._camera_widget._ROI)
+        ROI = self._camera_widget._ROI
+        if len(ROI) != 2:
+            return
+        coords = [ROI[0][0], ROI[0][1], ROI[1][0], ROI[1][1]]
+        parsed = [str(i) for i in coords]
+        with open("roi_config.txt", "w") as f:
+            for p in parsed:
+                f.write(f"{p}\n")
+        tk.messagebox.showinfo(title="ROI Set", message=f"New ROI set, restart app to see changes. \n {ROI}")
 
     def _finish_calibrate(self):
-        self.destroy()
+        self._calibrate_menu.destroy()
 
     def _createWidgets(self):
         photo = tk.Button(text="Take Photo", command=self._take_photo)
@@ -222,6 +229,8 @@ class LiveViewCanvas(tk.Canvas):
         self._ROI = []
         self._set_ROI = False
         self.bind("<Button-1>", self._onclick)
+        self._mode = "Raw"
+        self._sizes = {"Raw": (360, 180), "DOCP": (180, 180), "g_em": (180, 180)}
 
         self._get_image()
 
@@ -234,12 +243,15 @@ class LiveViewCanvas(tk.Canvas):
             self.create_text(event.x, event.y, anchor=tk.W, font="Arial", text="X")
             self._ROI.append((event.x, event.y))
             print(f"clicked at {event.x}, {event.y}")
+            self._set_ROI = False
         elif len(self._ROI) == 2:
-            self._ROI = [] 
-
+            self._ROI = []
+        else:
+            None
 
     def set_cmap_mode(self, mode):
         """Setter for the Cmap mode."""
+        self._mode = mode
         self._cmap.set_mode(mode)
 
     def set_cmaps(self, cmap_list):
@@ -254,7 +266,7 @@ class LiveViewCanvas(tk.Canvas):
             self._np_array = np.hstack((image1, image2))
             unrotated_img = self._cmap.colour_map(image1, image2)
             self._img_data = unrotated_img
-            resized = unrotated_img.resize((1500, 900)) #(w, h)
+            resized = unrotated_img.resize(self._sizes[self._mode]) #(w, h)
             #self._img_data = unrotated_img.rotate(270) #image right way up - but it does end up stacking vertically rather than horizontally for 2 img setups
             self._image = ImageTk.PhotoImage(master=self, image=resized) # self._img_data
             if (self._image.width() != self._image_width) or (self._image.height() != self._image_height):
