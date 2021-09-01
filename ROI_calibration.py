@@ -14,7 +14,7 @@ except ImportError:
     configure_path = None
 
 from thorlabs_tsi_sdk.tl_camera import TLCameraSDK, TLCamera, Frame
-
+import rotator
 try:
     #  For python 2.7 tkinter is named Tkinter
     import Tkinter as tk
@@ -31,13 +31,6 @@ except ImportError:
 
 DEFAULT_THRESHOLD = 0.05 #percent
 
-""" LiveViewCanvas
-
-This is a Tkinter Canvas object that can be reused in custom programs. The Canvas expects a parent Tkinter object and 
-an image queue. The image queue is a queue.Queue that it will pull images from, and is expected to hold PIL Image 
-objects that will be displayed to the canvas. It automatically adjusts its size based on the incoming image dimensions.
-
-"""
 
 
 class LiveViewCanvas(tk.Canvas):
@@ -49,9 +42,12 @@ class LiveViewCanvas(tk.Canvas):
         self._intensity = intensity_threshold
         self._img_data = None
         self._ROI = []
+        self._align = "Horizontal"
+        #self._r = rotator.Rotator("/dev/ttyUSB0")
 
         tk.Canvas.__init__(self, parent)
         self.bind("<Button-1>", self._onclick)
+        self.bind_all("<space>", self._rotate) #need to bind_all so whole application listens for keypress
         self.pack()
         self._get_image()
 
@@ -72,7 +68,23 @@ class LiveViewCanvas(tk.Canvas):
         self._draw_crosses(self._ROI)
         if type(self._img_data) == np.ndarray:
             self._draw_saturation_message(self._intensity)
+        self._draw_angle()
         self.after(10, self._get_image)
+
+    def _rotate(self, event):
+        print(f"Align is {self._align}")
+        if self._align == "Horizontal":
+            self._r.rotate_to_angle(rotator.VERTICAL)
+            self._align = "Vertical"
+        elif self._align == "Vertical":
+            self._r.rotate_to_angle(rotator.HORIZONTAL)
+            self._align = "Horizontal"
+        else:
+            pass
+    
+    def _draw_angle(self):
+        message = f"{self._align}ly aligned, press space to rotate."
+        self.create_text(10, 1000, anchor=tk.W, font="Arial", text=message, fill="Orange")
 
     def _onclick(self, event):
         if len(self._ROI) == 2:
@@ -118,7 +130,6 @@ class ImageAcquisitionThread(threading.Thread):
         self._camera = camera
         self._camera.roi = (0, 0, 1024, 1024)#(660, 572, 750, 660) are good values?
         self._previous_timestamp = 0
-        self._is_color = False
 
         self._bit_depth = camera.bit_depth
         self._camera.image_poll_timeout_ms = 0  # Do not want to block for long periods of time
@@ -133,8 +144,6 @@ class ImageAcquisitionThread(threading.Thread):
         self._stop_event.set()
 
     def _get_image(self, frame):
-        # type: (Frame) -> Image
-        # no coloring, just scale down image to 8 bpp and place into PIL Image object
         scaled_image = frame.image_buffer >> (self._bit_depth - 8)
         return scaled_image / 255 #Image.fromarray(scaled_image)
 
@@ -146,41 +155,32 @@ class ImageAcquisitionThread(threading.Thread):
                     np_image = self._get_image(frame)
                     self._image_queue.put_nowait(np_image)
             except queue.Full:
-                # No point in keeping this image around when the queue is full, let's skip to the next one
                 pass
             except Exception as error:
                 print("Encountered error: {error}, image acquisition will stop.".format(error=error))
                 break
         print("Image acquisition has stopped")
-        if self._is_color:
-            self._mono_to_color_processor.dispose()
-            self._mono_to_color_sdk.dispose()
 
 
-""" Main
 
-When run as a script, a simple Tkinter app is created with just a LiveViewCanvas widget. 
 
-"""
+
+
 if __name__ == "__main__":
-    #ROI_input = input("Please enter ROI (in form x1, y1, x2, y2):")
-    #parsed = ROI_input.split(", ")
-    #coords = [int(i) for i in parsed]
-    #ROI = (coords[0], coords[1], coords[2], coords[3])
     sat = float(input("What threshold saturation do you want?"))
+    cam = int(input("Open camera 0 or 1?"))
     with TLCameraSDK() as sdk:
         camera_list = sdk.discover_available_cameras()
-        with sdk.open_camera(camera_list[0]) as camera:
+        with sdk.open_camera(camera_list[cam]) as camera:
             root = tk.Tk()
             root.title("ROI calibration")
             image_acquisition_thread = ImageAcquisitionThread(camera)
             camera_widget = LiveViewCanvas(parent=root, image_queue=image_acquisition_thread.get_output_queue(), intensity_threshold=sat)
 
-            print("Setting camera parameters...")
             camera.frames_per_trigger_zero_for_unlimited = 0
             camera.arm(2)
             camera.issue_software_trigger()
-
+            
             image_acquisition_thread.start()
 
             root.mainloop()
@@ -201,3 +201,5 @@ if __name__ == "__main__":
             print("Written new ROI to file!")
     else:
         print("ROI not enough points, need 2!")
+    camera.disarm()
+    camera.dispose()

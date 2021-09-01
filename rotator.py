@@ -28,6 +28,7 @@ class Rotator():
 
     def __init__(self, port): #might need to add flushing and setting params
         try:
+            #can just use pyserial to interface though may need to download drivers if on windows
             self._port = serial.Serial(port, baudrate=9600) #port='ftdi://ftdi:ft-x:DK0AJJZI/1'
             sleep(0.05)
             self._port.reset_input_buffer()
@@ -37,11 +38,21 @@ class Rotator():
             #self._optimize_motor()
             #self._freq_search()
             #self._set_jog_size(45)
-            self.rotate_to_angle(HORIZONTAL) #reset pos -should be 52
+            self.rotate_to_angle(HORIZONTAL) #reset pos
         except Exception as error:
             print(f"Error: {error}, please supply a port.")
 
     def _send_command(self, command, data=""):
+        """
+        Command structure is as follows:
+            _____________________________________________________________________________________________
+            |                    3 byte header            |                 8 byte data (optional)      |
+            | 1 byte motor address (0-A) | 2 byte mneomic |       Hex number encoded as ASCII byte      |
+            ¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯
+        I just use default motor address (0) - but no real justification.
+        Mneomics available on data sheet, i.e 'ho' is home.
+        Data not needed for some commands like home and jog, but is needed for move commands.
+        """
         command_string = command + data
         command_byte = str.encode(command_string, encoding='ASCII')
         self._port.write(command_byte)
@@ -85,7 +96,6 @@ class Rotator():
         while done is False:
             self._send_get_status()
             data = self._port.readline()
-            #print(data)
             if data.decode()[:5] == "0GS00":
                 done = True
             else:
@@ -97,8 +107,7 @@ class Rotator():
         rotated = False
         while rotated is False: #block until device says has rotated to specified angle
             data = self._port.readline()
-            #print(data)
-            if data.decode()[:3] == "0PO": #might be able to just set if data[:3] == "APO" if this doesn't work
+            if data.decode()[:3] == "0PO": #0PO is return code for sucessful move command
                 rotated = True
             else:
                 pass

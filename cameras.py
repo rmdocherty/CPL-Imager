@@ -5,15 +5,12 @@ Created on Fri Jul 30 12:14:46 2021
 
 @author: ronan
 """
-from thorlabs_tsi_sdk.tl_camera import TLCamera, Frame
+#from thorlabs_tsi_sdk.tl_camera import TLCamera, Frame
 import rotator
-from helper import clearQueue
+#from helper import clearQueue
 import threading
-try:
-    #  For Python 2.7 queue is named Queue
-    import Queue as queue
-except ImportError:
-    import queue
+
+import queue
 import numpy as np
 from time import sleep
 
@@ -33,16 +30,18 @@ class ImageAcquisitionThread(threading.Thread):
     time for the thread to stop.
     """
 
-    def __init__(self, camera):
+    def __init__(self, camera, label="Left"):
         super().__init__() #pdon't include class inside super as this breaks inheritance for child classes!
         self._camera = camera
+        self._camera.roi = (0, 0, 1024, 1024)
         self._previous_timestamp = 0
+        self._label = label
 
         self._bit_depth = camera.bit_depth
         self._camera.image_poll_timeout_ms = 0  # Do not want to block for long periods of time. was 0!!!
         self._image_queue = queue.Queue(maxsize=2)
         self._stop_event = threading.Event()
-        self._get_roi_from_file()
+        #self._get_roi_from_file()
 
     def _get_roi_from_file(self):
         try:

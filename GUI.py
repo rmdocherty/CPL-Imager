@@ -51,8 +51,8 @@ class CPL_Viewer(tk.Frame):
         self._camera_widget.set_cmap_mode("g_em")
 
     def _take_photo(self):
-        clearQueue(self._CQ)
         if self._live is False:
+            clearQueue(self._CQ)
             print("Taking static photo")
             self._CQ.put_nowait("Photo")#put("Photo", block=True, timeout=0.)
             self._camera_widget._get_image()
@@ -61,8 +61,6 @@ class CPL_Viewer(tk.Frame):
         
     def _toggle_live(self):
         clearQueue(self._CQ)
-        #while not self._CQ.empty():
-        #    self._CQ.get()
         if self._live is True:
             self._live = False
             print("Live view off")
@@ -174,9 +172,7 @@ class LiveViewCanvas(tk.Canvas):
         self.image_queue2 = iq2
         self._image_width = 0
         self._image_height = 0
-        tk.Canvas.__init__(self, parent)
-        # need the columnspan and row span to make alignment nice
-        self.grid(column=1, row=0, columnspan=5, rowspan=5)
+
         self._cmap = ColourMapper(mode)
         self._img_data = [] # need variable to store image in as can't seem to save directly from a ImageTk.PhotoImage Object
 
@@ -186,6 +182,10 @@ class LiveViewCanvas(tk.Canvas):
         self._mode = "Raw"
         self._sizes = {"Raw": (360, 180), "DOCP": (180, 180), "g_em": (180, 180)}
 
+        tk.Canvas.__init__(self, parent)
+        #sleep(1)
+        # need the columnspan and row span to make alignment nice
+        self.grid(column=1, row=0, columnspan=5, rowspan=5)
         self._get_image()
 
     def set_masks(self, LCPL, RCPL):
@@ -201,9 +201,12 @@ class LiveViewCanvas(tk.Canvas):
         self._cmap.set_cmaps(cmap_list)
 
     def _get_image(self):
+        iq1 = self.image_queue1
+        iq2 = self.image_queue2
+        #print(f"L queue size: {iq1.qsize()} & R queue size: {iq2.qsize()}")
         try:
-            image1 = self.image_queue1.get_nowait()
-            image2 = self.image_queue2.get_nowait()
+            image1 = iq1.get_nowait()
+            image2 = iq2.get_nowait()
             image1 = image1 * self._LCPL_mask
             image2 = image2 * self._RCPL_mask
             self._np_array = np.hstack((image1, image2))
@@ -220,11 +223,11 @@ class LiveViewCanvas(tk.Canvas):
             self.create_image(0, 0, image=self._image, anchor='nw')
         except queue.Empty:
             pass
-        self.after(10, self._get_image)
+        self.after(20, self._get_image)
 
     def take_photo(self):
         """Take snapshot of current image by using the _img_data image."""
         timestamp = datetime.now()
         timestamp_string = timestamp.strftime("%d-%m-%y_%H:%M:%S_%f")
         self._img_data.save("photos/" + timestamp_string, format="bmp")
-        np.save("photos/" + timestamp_string, self._np_array)
+        np.save("photos/" + timestamp_string + ".bmp", self._np_array)
