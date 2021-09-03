@@ -32,7 +32,7 @@ class ColourMapper():
 
     def set_cmaps(self, list_cmaps):
         """Given list of strings referring to mpl cmaps, set the cap mode """
-        self._cmaps = {"Raw": [list_cmaps[0], list_cmaps[1]], "DOCP": list_cmaps[2], "g_em": list_cmaps[3]}
+        self._cmaps = {"Raw": [list_cmaps[0], list_cmaps[1]], "DOCP": list_cmaps[2], "g_em": list_cmaps[3] + "_r"} #need reverse in here due to r/l cpl defintions
 
     def _get_cmaps_from_config(self):
         """
@@ -100,7 +100,8 @@ class ColourMapper():
         elif self._mode == "g_em":
             cmap = self._cmaps["g_em"]
             g_em = (img1 - img2) / (img1 + img2) #from equation, ignore factor of 2
-            g_em = (-g_em + 1) / 2 #rescale from -1,+1 to 0,+1 for cmapping
+            # g_em = g_em + 1
+            g_em = (g_em + 1) / 2 #rescale from -1,+1 to 0,+1 for cmapping
             mapped = self._single_cmap(g_em, cmap)
 
         elif self._mode == "DOCP":

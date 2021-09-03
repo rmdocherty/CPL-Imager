@@ -180,9 +180,12 @@ class LiveViewCanvas(tk.Canvas):
         self._RCPL_mask = np.array([1])
 
         self._mode = "Raw"
-        self._sizes = {"Raw": (360, 180), "DOCP": (180, 180), "g_em": (180, 180)}
-
+        self._sizes = {"Raw": (720, 360), "DOCP": (360, 360), "g_em": (360, 360)}
+        
+        
         tk.Canvas.__init__(self, parent)
+        self._intensity = 0
+        self.bind_all('<Motion>', self._get_intensity_at_cursor)
         #sleep(1)
         # need the columnspan and row span to make alignment nice
         self.grid(column=1, row=0, columnspan=5, rowspan=5)
@@ -209,10 +212,13 @@ class LiveViewCanvas(tk.Canvas):
             image2 = iq2.get_nowait()
             image1 = image1 * self._LCPL_mask
             image2 = image2 * self._RCPL_mask
+            image2 = image2[::-1] #USE THISIN 2 CAM SETUPS!!!
+            
             self._np_array = np.hstack((image1, image2))
             unrotated_img = self._cmap.colour_map(image1, image2)
             self._img_data = unrotated_img
             resized = unrotated_img.resize(self._sizes[self._mode]) #(w, h)
+            self._resized = resized
             #self._img_data = unrotated_img.rotate(270) #image right way up - but it does end up stacking vertically rather than horizontally for 2 img setups
             self._image = ImageTk.PhotoImage(master=self, image=resized) # self._img_data
             if (self._image.width() != self._image_width) or (self._image.height() != self._image_height):
@@ -221,6 +227,7 @@ class LiveViewCanvas(tk.Canvas):
                 self._image_height = self._image.height()  #remove this scaling later!
                 self.config(width=self._image_width, height=self._image_height)
             self.create_image(0, 0, image=self._image, anchor='nw')
+            self._draw_intensity()
         except queue.Empty:
             pass
         self.after(20, self._get_image)
@@ -229,5 +236,33 @@ class LiveViewCanvas(tk.Canvas):
         """Take snapshot of current image by using the _img_data image."""
         timestamp = datetime.now()
         timestamp_string = timestamp.strftime("%d-%m-%y_%H:%M:%S_%f")
-        self._img_data.save("photos/" + timestamp_string, format="bmp")
-        np.save("photos/" + timestamp_string + ".bmp", self._np_array)
+        self._img_data.save("photos/" + timestamp_string + ".bmp", format="bmp")
+        np.save("photos/" + timestamp_string, self._np_array)
+        
+    def _get_intensity_at_cursor(self, event):
+        try:
+            x, y = event.x, event.y
+        except IndexError:
+            x, y = 0, 0
+        try:
+            if self._mode == "Raw":
+                self._intensity = 1 - np.array(self._resized.convert('LA'))[y, x][0] / 255
+                #self._intensity = self._np_array[x, y]
+            elif self._mode == "DOCP":
+                self._intensity = np.array(self._resized.convert('LA'))[y, x][0] / 255
+            elif self._mode == "g_em": #problem here as cmap diverging!!
+                data = self._np_array
+                arr_x, arr_y = data.shape[1] // 2, data.shape[0]
+                scale_factor_x = arr_x / self._sizes[self._mode][0]
+                scale_factor_y = arr_y / self._sizes[self._mode][1]
+                LCPL = self._np_array[:, :arr_x]
+                RCPL = self._np_array[:, arr_x:]
+                g_em = (2 * (LCPL - RCPL)) / (LCPL + RCPL)
+                x_prime, y_prime = int(x * scale_factor_x), int(y * scale_factor_y)
+                self._intensity = g_em[y_prime, x_prime]
+
+        except AttributeError:
+            self._intensity = 0
+        #print('{}, {}, {}'.format(x, y, intensity))
+    def _draw_intensity(self):
+        self.create_text(10, 10, anchor=tk.W, fill="Orange", font="Arial", text=f"Intensity:{self._intensity}")

@@ -30,10 +30,10 @@ class ImageAcquisitionThread(threading.Thread):
     time for the thread to stop.
     """
 
-    def __init__(self, camera, label="Left"):
+    def __init__(self, camera, label="left"):
         super().__init__() #pdon't include class inside super as this breaks inheritance for child classes!
         self._camera = camera
-        self._camera.roi = (0, 0, 1024, 1024)
+        self._camera.roi = (0, 0, 1500, 1500)
         self._previous_timestamp = 0
         self._label = label
 
@@ -41,16 +41,19 @@ class ImageAcquisitionThread(threading.Thread):
         self._camera.image_poll_timeout_ms = 0  # Do not want to block for long periods of time. was 0!!!
         self._image_queue = queue.Queue(maxsize=2)
         self._stop_event = threading.Event()
-        #self._get_roi_from_file()
+        self._get_roi_from_file()
 
     def _get_roi_from_file(self):
         try:
-            f = open("roi_config.txt")
+            print(f"roi_config_{self._label}.txt")
+            f = open(f"roi_config_{self._label}.txt")
+            
             coords = [int(i.strip('\n')) for i in f.readlines()]
             ROI = (coords[0], coords[1], coords[2], coords[3])
             print(f"Setting ROI as {ROI}")
             self._camera.roi = ROI
         except (IOError, ValueError):
+            print("Error generating ROI from file, falling back to default")
             pass
 
     def get_output_queue(self):

@@ -162,7 +162,7 @@ class ImageAcquisitionThread(threading.Thread):
         print("Image acquisition has stopped")
 
 
-
+labels = {0: "left", 1: "right"}
 
 
 
@@ -195,11 +195,9 @@ if __name__ == "__main__":
         print(f"ROI is {parsed}")
         confirm = input("Is ROI acceptable (y/n)?")
         if confirm.lower() in ["y", "yes", "1"]:
-            with open("roi_config.txt", "w") as f:
+            with open(f"roi_config_{labels[cam]}.txt", "w") as f:
                 for p in parsed:
                     f.write(f"{p}\n")
             print("Written new ROI to file!")
     else:
         print("ROI not enough points, need 2!")
-    camera.disarm()
-    camera.dispose()

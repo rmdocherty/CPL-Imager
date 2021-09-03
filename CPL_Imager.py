@@ -34,7 +34,7 @@ class CPL_Imager():
         self._root.title("CPL Imager")
 
     def _gen_image_acquisition_threads(self, cam1, cam2):
-        return ImageAcquisitionThread(cam1, label="Left"), ImageAcquisitionThread(cam2, label="Right")
+        return ImageAcquisitionThread(cam1, label="left"), ImageAcquisitionThread(cam2, label="right")
 
     def _gen_widget(self, image_queue1, image_queue2):
         camera_widget = LiveViewCanvas(parent=self._root, iq1=image_queue1,
@@ -58,16 +58,16 @@ class CPL_Imager():
             with sdk.open_camera(camera_list[0]) as cam1, sdk.open_camera(camera_list[1]) as cam2:
                 self._main_function(cam1, cam2)
                 
-    def run_2_cam(self):
+    def run_2_cam(self): #camera order should be 14358, 14071
         with TLCameraSDK() as sdk:
             camera_list = sdk.discover_available_cameras()
             print(camera_list)
-            with sdk.open_camera(camera_list[0]) as cam1:
-                image_acquisition_thread_1 = ImageAcquisitionThread(cam1, label="Left")
+            with sdk.open_camera(camera_list[1]) as cam1:
+                image_acquisition_thread_1 = ImageAcquisitionThread(cam1, label="left")
                 self._start_camera(cam1)
                 iq1 = image_acquisition_thread_1.get_output_queue()
-                with sdk.open_camera(camera_list[1]) as cam2:
-                    image_acquisition_thread_2 = ImageAcquisitionThread(cam2, label="Left")
+                with sdk.open_camera(camera_list[0]) as cam2:
+                    image_acquisition_thread_2 = ImageAcquisitionThread(cam2, label="right")
                     self._start_camera(cam2)
                     
                     iq2 = image_acquisition_thread_2.get_output_queue()
@@ -84,11 +84,12 @@ class CPL_Imager():
                     image_acquisition_thread_1.join()
                     image_acquisition_thread_2.stop()
                     image_acquisition_thread_2.join()
+        return 0
 
     def _main_function(self, cam1, cam2):
 
-        image_acquisition_thread_1 = ImageAcquisitionThread(cam1, label="Left")
-        image_acquisition_thread_2 = ImageAcquisitionThread(cam2, label="Right")
+        image_acquisition_thread_1 = ImageAcquisitionThread(cam1, label="left")
+        image_acquisition_thread_2 = ImageAcquisitionThread(cam2, label="right")
 
         iq1 = image_acquisition_thread_1.get_output_queue()
         iq2 = image_acquisition_thread_2.get_output_queue()
@@ -215,6 +216,7 @@ class Compact_CPL_Imager(CPL_Imager_One_Camera):
 
 if __name__ == "__main__":
     camera_list = TLCameraSDK().discover_available_cameras()
+    print(f"Operating with {len(camera_list)} cameras!")
     if len(camera_list) == 2: #beamsplitter design
         imager = CPL_Imager()
         imager.run_2_cam()
@@ -226,6 +228,4 @@ if __name__ == "__main__":
         pass
     else:
         raise Exception("Too many cameras!")
-    print(f"Operating with {len(camera_list)} cameras!")
-    #imager.run()
     TLCameraSDK().dispose()
