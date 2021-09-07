@@ -150,7 +150,7 @@ class CompactImageAcquisitionThread(ImageAcquisitionThread):
                 except Exception as error:
                     print("Encountered error: {error}, image acquisition will stop.".format(error=error))
                     break
-            elif self._mode == "Photo": #take single snapshot
+            elif self._mode == "Photo": #take single snapshot - delete this?
                 iq1 = self._image_queue
                 iq2 = self._image_queue_2
 

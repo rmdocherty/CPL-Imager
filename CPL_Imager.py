@@ -50,66 +50,66 @@ class CPL_Imager():
         self._start_camera(cam1)
         self._start_camera(cam2)
 
-    def run(self):
-        """Grab all available cameras and pass them into the main function."""
-        with TLCameraSDK() as sdk:
-            camera_list = sdk.discover_available_cameras()
-            print(camera_list)
-            with sdk.open_camera(camera_list[0]) as cam1, sdk.open_camera(camera_list[1]) as cam2:
-                self._main_function(cam1, cam2)
+    # def run(self):
+    #     """Grab all available cameras and pass them into the main function."""
+    #     with TLCameraSDK() as sdk:
+    #         camera_list = sdk.discover_available_cameras()
+    #         print(camera_list)
+    #         with sdk.open_camera(camera_list[0]) as cam1, sdk.open_camera(camera_list[1]) as cam2:
+    #             self._main_function(cam1, cam2)
+
+    def run(self): #camera order should be 14358, 14071
+        #with TLCameraSDK() as sdk:
+        camera_list = sdk.discover_available_cameras()
+        print(camera_list)
+        with sdk.open_camera(camera_list[1]) as cam1:
+            image_acquisition_thread_1 = ImageAcquisitionThread(cam1, label="left")
+            self._start_camera(cam1)
+            iq1 = image_acquisition_thread_1.get_output_queue()
+            with sdk.open_camera(camera_list[0]) as cam2:
+                image_acquisition_thread_2 = ImageAcquisitionThread(cam2, label="right")
+                self._start_camera(cam2)
                 
-    def run_2_cam(self): #camera order should be 14358, 14071
-        with TLCameraSDK() as sdk:
-            camera_list = sdk.discover_available_cameras()
-            print(camera_list)
-            with sdk.open_camera(camera_list[1]) as cam1:
-                image_acquisition_thread_1 = ImageAcquisitionThread(cam1, label="left")
-                self._start_camera(cam1)
-                iq1 = image_acquisition_thread_1.get_output_queue()
-                with sdk.open_camera(camera_list[0]) as cam2:
-                    image_acquisition_thread_2 = ImageAcquisitionThread(cam2, label="right")
-                    self._start_camera(cam2)
-                    
-                    iq2 = image_acquisition_thread_2.get_output_queue()
-                    camera_widget = self._gen_widget(iq1, iq2)
-                    self._GUI.set_camera_widget(camera_widget)
-                    image_acquisition_thread_1.start()
-                    image_acquisition_thread_2.start()
-                    
-            
-                    print("Viewer starting")
-                    self._root.mainloop()
-            
-                    image_acquisition_thread_1.stop()
-                    image_acquisition_thread_1.join()
-                    image_acquisition_thread_2.stop()
-                    image_acquisition_thread_2.join()
+                iq2 = image_acquisition_thread_2.get_output_queue()
+                camera_widget = self._gen_widget(iq1, iq2)
+                self._GUI.set_camera_widget(camera_widget)
+                image_acquisition_thread_1.start()
+                image_acquisition_thread_2.start()
+                
+        
+                print("Viewer starting")
+                self._root.mainloop()
+        
+                image_acquisition_thread_1.stop()
+                image_acquisition_thread_1.join()
+                image_acquisition_thread_2.stop()
+                image_acquisition_thread_2.join()
         return 0
 
-    def _main_function(self, cam1, cam2):
+    # def _main_function(self, cam1, cam2):
 
-        image_acquisition_thread_1 = ImageAcquisitionThread(cam1, label="left")
-        image_acquisition_thread_2 = ImageAcquisitionThread(cam2, label="right")
+    #     image_acquisition_thread_1 = ImageAcquisitionThread(cam1, label="left")
+    #     image_acquisition_thread_2 = ImageAcquisitionThread(cam2, label="right")
 
-        iq1 = image_acquisition_thread_1.get_output_queue()
-        iq2 = image_acquisition_thread_2.get_output_queue()
-        camera_widget = self._gen_widget(iq1, iq2)
-        self._GUI.set_camera_widget(camera_widget)
-        self._start_cameras(cam1, cam2)
-        #self._GUI.set_control_queue("")
-        image_acquisition_thread_1.start()
-        image_acquisition_thread_2.start()
+    #     iq1 = image_acquisition_thread_1.get_output_queue()
+    #     iq2 = image_acquisition_thread_2.get_output_queue()
+    #     camera_widget = self._gen_widget(iq1, iq2)
+    #     self._GUI.set_camera_widget(camera_widget)
+    #     self._start_cameras(cam1, cam2)
+    #     #self._GUI.set_control_queue("")
+    #     image_acquisition_thread_1.start()
+    #     image_acquisition_thread_2.start()
         
 
-        print("Viewer starting")
-        self._root.mainloop()
+    #     print("Viewer starting")
+    #     self._root.mainloop()
 
-        image_acquisition_thread_1.stop()
-        image_acquisition_thread_1.join()
-        image_acquisition_thread_2.stop()
-        image_acquisition_thread_2.join()
+    #     image_acquisition_thread_1.stop()
+    #     image_acquisition_thread_1.join()
+    #     image_acquisition_thread_2.stop()
+    #     image_acquisition_thread_2.join()
 
-        print("Closing resources...")
+    #     print("Closing resources...")
 
 
 class CPL_Imager_One_Camera(CPL_Imager):
@@ -215,17 +215,16 @@ class Compact_CPL_Imager(CPL_Imager_One_Camera):
 
 
 if __name__ == "__main__":
-    camera_list = TLCameraSDK().discover_available_cameras()
-    print(f"Operating with {len(camera_list)} cameras!")
-    if len(camera_list) == 2: #beamsplitter design
-        imager = CPL_Imager()
-        imager.run_2_cam()
-    elif len(camera_list) == 1: #compact design
-        imager = Compact_CPL_Imager()
+    with TLCameraSDK() as sdk:
+        camera_list = sdk.discover_available_cameras()
+        print(f"Operating with {len(camera_list)} cameras!")
+        if len(camera_list) == 2: #beamsplitter design
+            imager = CPL_Imager()
+        elif len(camera_list) == 1: #compact design
+            imager = Compact_CPL_Imager()
+        elif len(camera_list) == 0:
+            raise Exception("Please plug in at least one camera")
+            pass
+        else:
+            raise Exception("Too many cameras!")
         imager.run()
-    elif len(camera_list) == 0:
-        raise Exception("Please plug in at least one camera")
-        pass
-    else:
-        raise Exception("Too many cameras!")
-    TLCameraSDK().dispose()

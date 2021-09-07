@@ -180,7 +180,7 @@ if __name__ == "__main__":
             camera.frames_per_trigger_zero_for_unlimited = 0
             camera.arm(2)
             camera.issue_software_trigger()
-            
+
             image_acquisition_thread.start()
 
             root.mainloop()

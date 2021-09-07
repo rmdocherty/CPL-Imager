@@ -7,7 +7,6 @@ Created on Fri Jul 30 11:52:28 2021
 """
 import tkinter as tk
 from colourmapper import ColourMapper
-from helper import clearQueue
 from PIL import ImageTk
 import numpy as np
 try:
@@ -16,8 +15,11 @@ try:
 except ImportError:
     import queue
 from datetime import datetime
-from time import sleep
 
+def clearQueue(queue):
+    while not queue.empty():
+        queue.get()
+    return 0
 
 class CPL_Viewer(tk.Frame):
     """
@@ -181,8 +183,7 @@ class LiveViewCanvas(tk.Canvas):
 
         self._mode = "Raw"
         self._sizes = {"Raw": (720, 360), "DOCP": (360, 360), "g_em": (360, 360)}
-        
-        
+
         tk.Canvas.__init__(self, parent)
         self._intensity = 0
         self.bind_all('<Motion>', self._get_intensity_at_cursor)
@@ -213,13 +214,13 @@ class LiveViewCanvas(tk.Canvas):
             image1 = image1 * self._LCPL_mask
             image2 = image2 * self._RCPL_mask
             image2 = image2[::-1] #USE THISIN 2 CAM SETUPS!!!
-            
+
             self._np_array = np.hstack((image1, image2))
             unrotated_img = self._cmap.colour_map(image1, image2)
             self._img_data = unrotated_img
             resized = unrotated_img.resize(self._sizes[self._mode]) #(w, h)
             self._resized = resized
-            #self._img_data = unrotated_img.rotate(270) #image right way up - but it does end up stacking vertically rather than horizontally for 2 img setups
+
             self._image = ImageTk.PhotoImage(master=self, image=resized) # self._img_data
             if (self._image.width() != self._image_width) or (self._image.height() != self._image_height):
                 # resize the canvas to match the new image size
@@ -265,4 +266,4 @@ class LiveViewCanvas(tk.Canvas):
             self._intensity = 0
         #print('{}, {}, {}'.format(x, y, intensity))
     def _draw_intensity(self):
-        self.create_text(10, 10, anchor=tk.W, fill="Orange", font="Arial", text=f"Intensity:{self._intensity}")
+        self.create_text(10, 10, anchor=tk.W, fill="Black", font="Arial", text=f"Intensity:{self._intensity}")
