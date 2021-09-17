@@ -6,6 +6,7 @@ Created on Fri Jul 30 11:52:28 2021
 @author: ronan
 """
 import tkinter as tk
+import csv
 from colourmapper import ColourMapper
 from PIL import ImageTk
 import numpy as np
@@ -15,6 +16,7 @@ try:
 except ImportError:
     import queue
 from datetime import datetime
+from os import mkdir
 
 def clearQueue(queue):
     while not queue.empty():
@@ -181,25 +183,37 @@ class LiveViewCanvas(tk.Canvas):
         self._LCPL_mask = np.array([1])
         self._RCPL_mask = np.array([1])
 
-        self._mode = "Raw"
-        self._sizes = {"Raw": (720, 360), "DOCP": (360, 360), "g_em": (360, 360)}
-
         tk.Canvas.__init__(self, parent)
+
         self._intensity = 0
         self.bind_all('<Motion>', self._get_intensity_at_cursor)
-        #sleep(1)
         # need the columnspan and row span to make alignment nice
         self.grid(column=1, row=0, columnspan=5, rowspan=5)
+
+        self._cbar_canv = tk.Canvas(parent)#parent
+        self._cbar_canv.grid(column=6, row=0, rowspan=5, columnspan=1)
+
+        self.set_cmap_mode("Raw")
+        self._sizes = {"Raw": (720, 360), "DOCP": (360, 360), "g_em": (360, 360)}
+
         self._get_image()
 
     def set_masks(self, LCPL, RCPL):
         self._LCPL_mask = LCPL
         self._RCPL_mask = RCPL
 
+    def _pack_cbar_img(self, cbar_img):
+        #apparently need to save permanenet reference to image (i.e object scale rather than local, as otherwwise wown't show)
+        self._cbar_img = ImageTk.PhotoImage(master=self._cbar_canv, image=cbar_img)
+        self._cbar_canv.config(width=self._cbar_img.width(), height=self._cbar_img.height())
+        self._cbar_canv.create_image(0, 0, image=self._cbar_img, anchor='nw')
+
     def set_cmap_mode(self, mode):
         """Setter for the Cmap mode."""
         self._mode = mode
         self._cmap.set_mode(mode)
+        cbar_img = self._cmap.gen_colourbar()
+        self._pack_cbar_img(cbar_img)
 
     def set_cmaps(self, cmap_list):
         self._cmap.set_cmaps(cmap_list)
@@ -207,7 +221,6 @@ class LiveViewCanvas(tk.Canvas):
     def _get_image(self):
         iq1 = self.image_queue1
         iq2 = self.image_queue2
-        #print(f"L queue size: {iq1.qsize()} & R queue size: {iq2.qsize()}")
         try:
             image1 = iq1.get_nowait()
             image2 = iq2.get_nowait()
@@ -237,41 +250,56 @@ class LiveViewCanvas(tk.Canvas):
         """Take snapshot of current image by using the _img_data image."""
         timestamp = datetime.now()
         timestamp_string = timestamp.strftime("%d-%m-%y_%H:%M:%S_%f")
-        self._img_data.save("photos/" + timestamp_string + ".bmp", format="bmp")
-        np.save("photos/" + timestamp_string, self._np_array)
-        
+        directory = "photos/" + timestamp_string
+        mkdir(directory)
+        file_path = directory + "/" + timestamp_string
+        self._img_data.save(file_path + ".bmp", format="bmp")
+        np.save(file_path, self._np_array)
+        with open(file_path + ".txt", 'w') as txt_f, open(file_path + ".csv", 'w') as csv_f:
+            writer = csv.writer(csv_f)
+            for row in self._np_array:
+                writer.writerow(row)
+                txt_f.write(", ".join([str(col) for col in row]) + "\n")
+        with open(file_path + "_metadata.txt", 'w') as txt:
+            txt.write(self._mode + "\n")
+            txt.write("LCPL mask: \n")
+            for row in self._LCPL_mask:
+                try:
+                    txt.write(", ".join([str(col) for col in row]) + "\n")
+                except TypeError:
+                    txt.write("1 \n")
+            txt.write("RCPL mask: \n")
+            for row in self._RCPL_mask:
+                try:
+                    txt.write(", ".join([str(col) for col in row]) + "\n")
+                except TypeError:
+                    txt.write("1 \n")
+
     def _get_intensity_at_cursor(self, event):
         try:
             x, y = event.x, event.y
-        
+
             data = self._np_array
             arr_x, arr_y = data.shape[1] // 2, data.shape[0]
             scale_factor_x = arr_x / self._sizes[self._mode][0]
             scale_factor_y = arr_y / self._sizes[self._mode][1]
             LCPL = self._np_array[:, :arr_x]
             RCPL = self._np_array[:, arr_x:]
-            
+
             if self._mode == "Raw":
                 scale_factor_x *= 2
                 x_prime, y_prime = int(x * scale_factor_x), int(y * scale_factor_y)
                 self._intensity = data[y_prime, x_prime]
-                #self._intensity = 1 - np.array(self._resized.convert('LA'))[y, x][0] / 255
-                #self._intensity = self._np_array[x, y]
             elif self._mode == "DOCP":
                 x_prime, y_prime = int(x * scale_factor_x), int(y * scale_factor_y)
-                DOCP = (LCPL + RCPL) / 2  
+                DOCP = (LCPL + RCPL) / 2
                 self._intensity = DOCP[y_prime, x_prime]
-                #self._intensity = np.array(self._resized.convert('LA'))[y, x][0] / 255
-            elif self._mode == "g_em": #problem here as cmap diverging!!
-                
+            elif self._mode == "g_em":
                 g_em = (2 * (LCPL - RCPL)) / (LCPL + RCPL)
                 x_prime, y_prime = int(x * scale_factor_x), int(y * scale_factor_y)
                 self._intensity = g_em[y_prime, x_prime]
         except IndexError:
             x, y = 0, 0
 
-        #except AttributeError:
-            #self._intensity = 0
-        #print('{}, {}, {}'.format(x, y, intensity))
     def _draw_intensity(self):
-        self.create_text(10, 10, anchor=tk.W, fill="Black", font="Arial", text=f"Intensity:{self._intensity}")
+        self.create_text(10, 10, anchor=tk.W, fill="Black", font="Arial", text=f"{self._mode}:{self._intensity:.4f}")

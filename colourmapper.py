@@ -9,7 +9,7 @@ Created on Thu Jul 29 11:35:13 2021
 from matplotlib import cm
 from PIL import Image
 import numpy as np # maybe can just import hstack by itself later
-
+import matplotlib.pyplot as plt
 
 class ColourMapper():
     """
@@ -138,3 +138,46 @@ class ColourMapper():
         cmap = cm.get_cmap(cmap_string) #grab cmap object from string
         out_im = cmap(img, bytes=True) #bytes=True converts array into uint8 for fromarray to use
         return out_im
+
+    def gen_colourbar(self):
+        if self._mode == "Raw":
+            cmap1, cmap2 = self._cmaps["Raw"]
+            limits = np.array([[0, 1]])
+            cbar1, cbar2 = self._single_colourmap(limits, cmap1), self._single_colourmap(limits, cmap2)
+            out = Image.new('RGBA', (cbar1.width + cbar2.width, cbar1.height))
+            out.paste(cbar1, (0, 0))
+            out.paste(cbar2, (cbar1.width, 0))
+        elif self._mode == "DOCP":
+            cmap1 = self._cmaps["DOCP"]
+            limits = np.array([[0, 1]])
+            out = self._single_colourmap(limits, cmap1)
+        elif self._mode == "g_em":
+            cmap1 = self._cmaps["g_em"]
+            limits = np.array([[-2, 2]])
+            out = self._single_colourmap(limits, cmap1)
+        return out
+
+    def _single_colourmap(self, limits, cmap_string):
+        LEFT = 0.05
+        BOTTOM = 0.2
+        WIDTH = 0.08
+        HEIGHT = 0.6
+        cmap = cm.get_cmap(cmap_string)
+
+        fig = plt.figure()
+        img = plt.imshow(limits, cmap=cmap)
+        plt.gca().set_visible(False)
+        cax = plt.axes([LEFT, BOTTOM, WIDTH, HEIGHT])
+        plt.colorbar(orientation="vertical", cax=cax)
+
+        canvas = fig.canvas
+        can_dims = canvas.get_width_height()
+        plt.savefig("colorbar.png", transparent=True)
+        plt.close()
+
+        offset = (int(can_dims[0] * LEFT) - 10, int(can_dims[1] * BOTTOM) - 30)
+        bar_dims = (int(can_dims[0] * WIDTH) * 2.2, int(can_dims[1] * HEIGHT))
+
+        img = Image.open("colorbar.png")
+        img = img.crop((offset[0], offset[1], offset[0] + bar_dims[0], offset[1] + bar_dims[1] + 40))
+        return img

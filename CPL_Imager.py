@@ -50,16 +50,7 @@ class CPL_Imager():
         self._start_camera(cam1)
         self._start_camera(cam2)
 
-    # def run(self):
-    #     """Grab all available cameras and pass them into the main function."""
-    #     with TLCameraSDK() as sdk:
-    #         camera_list = sdk.discover_available_cameras()
-    #         print(camera_list)
-    #         with sdk.open_camera(camera_list[0]) as cam1, sdk.open_camera(camera_list[1]) as cam2:
-    #             self._main_function(cam1, cam2)
-
     def run(self): #camera order should be 14358, 14071
-        #with TLCameraSDK() as sdk:
         camera_list = sdk.discover_available_cameras()
         print(camera_list)
         with sdk.open_camera(camera_list[1]) as cam1:
@@ -69,17 +60,16 @@ class CPL_Imager():
             with sdk.open_camera(camera_list[0]) as cam2:
                 image_acquisition_thread_2 = ImageAcquisitionThread(cam2, label="right")
                 self._start_camera(cam2)
-                
+
                 iq2 = image_acquisition_thread_2.get_output_queue()
                 camera_widget = self._gen_widget(iq1, iq2)
                 self._GUI.set_camera_widget(camera_widget)
                 image_acquisition_thread_1.start()
                 image_acquisition_thread_2.start()
-                
-        
+
                 print("Viewer starting")
                 self._root.mainloop()
-        
+
                 image_acquisition_thread_1.stop()
                 image_acquisition_thread_1.join()
                 image_acquisition_thread_2.stop()
@@ -88,7 +78,7 @@ class CPL_Imager():
 
     def _main_function(self, cam1, cam2):
 
-        image_acquisition_thread_1, image_acquisition_thread_2  = self._gen_image_acquisition_threads(cam1, cam2)
+        image_acquisition_thread_1, image_acquisition_thread_2 = self._gen_image_acquisition_threads(cam1, cam2)
 
         iq1 = image_acquisition_thread_1.get_output_queue()
         iq2 = image_acquisition_thread_2.get_output_queue()
@@ -98,7 +88,6 @@ class CPL_Imager():
         #self._GUI.set_control_queue("")
         image_acquisition_thread_1.start()
         image_acquisition_thread_2.start()
-        
 
         print("Viewer starting")
         self._root.mainloop()
