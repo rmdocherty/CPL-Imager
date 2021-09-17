@@ -15,8 +15,8 @@ import numpy as np
 from time import sleep
 
 np.random.seed(1)
-IMG_HEIGHT = 300 # can go at least as high as 1000x1000 - don't know what upper limit is!
-IMG_WIDTH = 300
+IMG_HEIGHT = 360 # can go at least as high as 1000x1000 - don't know what upper limit is!
+IMG_WIDTH = 360
 
 
 class ImageAcquisitionThread(threading.Thread):
@@ -185,28 +185,47 @@ class CompactImageAcquisitionThread(ImageAcquisitionThread):
         self._stop_event.set()
 
 
-class SingleCamera(CompactImageAcquisitionThread):
+class MockCamera(threading.Thread):
+    """
+    MockCamera.
+
+    Fake class designed to emulate action of the ImageAcquistionThread in
+    live_view.py. Generates random array of fixed width and throws it onto a
+    queue to be grabbed and decoded by LiveViewCanvas.
+    """
+
+    def __init__(self, label="left"):
+        super().__init__()
+        self._image_queue = queue.Queue(maxsize=2)
+        self._stop_event = threading.Event()
+        self._label = label
+
+    def get_output_queue(self):
+        """Getter method for output queue."""
+        # type: (type(None)) -> queue.Queue
+        return self._image_queue
+
+    def stop(self):
+        """Thread stopping fn."""
+        self._stop_event.set()
 
     def run(self):
-        """
-        Run.
-
-        Rotate camera & take image. Each time image is taken and put onto queue,
-        switch which queue is being used.
-        """
+        """If on throw random np array into queue, if off throw None into queue."""
         while not self._stop_event.is_set():
             try:
-                frame = self._camera.get_pending_frame_or_null()
-                if frame is not None:
-                    pil_image = self._get_image(frame)
-                    self._image_queue.put_nowait(pil_image)
-                    self._image_queue_2.put_nowait(None)
-            except queue.Full: #maybe this is problem
+                if self._label == "left":
+                    val = 0.1
+                else:
+                    val = 0.4 #have a +0.3 differential 
+                LCPL = np.zeros((IMG_HEIGHT, IMG_WIDTH)) + val
+                self._image_queue.put_nowait(LCPL)
+                #else:
+                #    self._image_queue.put_nowait(None)
+            except queue.Full:
                 # No point in keeping this image around when the queue is full, let's skip to the next one
                 pass
             except Exception as error:
                 print("Encountered error: {error}, image acquisition will stop.".format(error=error))
                 break
         print("Image acquisition has stopped")
-        self._camera.disarm()
-        self._camera.dispose()
+
