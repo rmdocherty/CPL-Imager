@@ -243,27 +243,35 @@ class LiveViewCanvas(tk.Canvas):
     def _get_intensity_at_cursor(self, event):
         try:
             x, y = event.x, event.y
-        except IndexError:
-            x, y = 0, 0
-        try:
+        
+            data = self._np_array
+            arr_x, arr_y = data.shape[1] // 2, data.shape[0]
+            scale_factor_x = arr_x / self._sizes[self._mode][0]
+            scale_factor_y = arr_y / self._sizes[self._mode][1]
+            LCPL = self._np_array[:, :arr_x]
+            RCPL = self._np_array[:, arr_x:]
+            
             if self._mode == "Raw":
-                self._intensity = 1 - np.array(self._resized.convert('LA'))[y, x][0] / 255
+                scale_factor_x *= 2
+                x_prime, y_prime = int(x * scale_factor_x), int(y * scale_factor_y)
+                self._intensity = data[y_prime, x_prime]
+                #self._intensity = 1 - np.array(self._resized.convert('LA'))[y, x][0] / 255
                 #self._intensity = self._np_array[x, y]
             elif self._mode == "DOCP":
-                self._intensity = np.array(self._resized.convert('LA'))[y, x][0] / 255
+                x_prime, y_prime = int(x * scale_factor_x), int(y * scale_factor_y)
+                DOCP = (LCPL + RCPL) / 2  
+                self._intensity = DOCP[y_prime, x_prime]
+                #self._intensity = np.array(self._resized.convert('LA'))[y, x][0] / 255
             elif self._mode == "g_em": #problem here as cmap diverging!!
-                data = self._np_array
-                arr_x, arr_y = data.shape[1] // 2, data.shape[0]
-                scale_factor_x = arr_x / self._sizes[self._mode][0]
-                scale_factor_y = arr_y / self._sizes[self._mode][1]
-                LCPL = self._np_array[:, :arr_x]
-                RCPL = self._np_array[:, arr_x:]
+                
                 g_em = (2 * (LCPL - RCPL)) / (LCPL + RCPL)
                 x_prime, y_prime = int(x * scale_factor_x), int(y * scale_factor_y)
                 self._intensity = g_em[y_prime, x_prime]
+        except IndexError:
+            x, y = 0, 0
 
-        except AttributeError:
-            self._intensity = 0
+        #except AttributeError:
+            #self._intensity = 0
         #print('{}, {}, {}'.format(x, y, intensity))
     def _draw_intensity(self):
         self.create_text(10, 10, anchor=tk.W, fill="Black", font="Arial", text=f"Intensity:{self._intensity}")
