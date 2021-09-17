@@ -38,7 +38,7 @@ class CPL_Imager():
 
     def _gen_widget(self, image_queue1, image_queue2):
         camera_widget = LiveViewCanvas(parent=self._root, iq1=image_queue1,
-                                       iq2=image_queue2, mode="Raw")
+                                       iq2=image_queue2, img_type="2cam")
         return camera_widget
 
     def _start_camera(self, cam):
@@ -119,10 +119,10 @@ class CPL_Imager_One_Camera(CPL_Imager):
     def _gen_widget(self, image_queue1, image_queue2):
         if self._camera_handedness in ["l", "lcpl", "left"]:
             camera_widget = LiveViewCanvas(parent=self._root, iq1=image_queue1,
-                                           iq2=image_queue2, mode="Raw")
+                                           iq2=image_queue2)
         elif self._camera_handedness in ["r", "rcpl", "right"]: #swap image queues
             camera_widget = LiveViewCanvas(parent=self._root, iq1=image_queue2,
-                                           iq2=image_queue1, mode="Raw")
+                                           iq2=image_queue1)
         else:
             raise Exception("Please enter which camera is plugged in")
         return camera_widget
@@ -179,7 +179,7 @@ class Compact_CPL_Imager(CPL_Imager_One_Camera):
 
     def _gen_widget(self, image_queue1, image_queue2):
         camera_widget = LiveViewCanvas(parent=self._root, iq1=image_queue1,
-                                       iq2=image_queue2, mode="Raw")
+                                       iq2=image_queue2)
         return camera_widget
 
     def _gen_compactIAT(self, camera):

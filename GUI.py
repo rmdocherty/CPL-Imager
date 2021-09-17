@@ -171,13 +171,14 @@ class LiveViewCanvas(tk.Canvas):
     the mode and spits out a PIL image to be thrown onto the canvas.
     """
 
-    def __init__(self, parent, iq1, iq2, mode="Raw"):
+    def __init__(self, parent, iq1, iq2, img_type="default"):
         self.image_queue1 = iq1
         self.image_queue2 = iq2
         self._image_width = 0
         self._image_height = 0
+        self._type = img_type
 
-        self._cmap = ColourMapper(mode)
+        self._cmap = ColourMapper("Raw")
         self._img_data = [] # need variable to store image in as can't seem to save directly from a ImageTk.PhotoImage Object
 
         self._LCPL_mask = np.array([1])
@@ -226,7 +227,8 @@ class LiveViewCanvas(tk.Canvas):
             image2 = iq2.get_nowait()
             image1 = image1 * self._LCPL_mask
             image2 = image2 * self._RCPL_mask
-            image2 = image2[::-1] #USE THISIN 2 CAM SETUPS!!!
+            if self._type == "2cam":
+                image2 = image2[::-1] #USE THISIN 2 CAM SETUPS!!!
 
             self._np_array = np.hstack((image1, image2))
             unrotated_img = self._cmap.colour_map(image1, image2)
