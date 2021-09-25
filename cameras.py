@@ -44,10 +44,11 @@ class ImageAcquisitionThread(threading.Thread):
         self._get_roi_from_file()
 
     def _get_roi_from_file(self):
+        """Grab corresponding (left or right) ROI config from the file, else
+        use defaults."""
         try:
             print(f"roi_config_{self._label}.txt")
             f = open(f"roi_config_{self._label}.txt")
-            
             coords = [int(i.strip('\n')) for i in f.readlines()]
             ROI = (coords[0], coords[1], coords[2], coords[3])
             print(f"Setting ROI as {ROI}")
@@ -154,9 +155,6 @@ class CompactImageAcquisitionThread(ImageAcquisitionThread):
                 iq1 = self._image_queue
                 iq2 = self._image_queue_2
 
-                #clearQueue(iq1)
-                #clearQueue(iq2) clearing queue breaks image updating
-         
                 self._rotate_mount(rotator.HORIZONTAL)
                 frame = None
                 while frame is None:
@@ -219,8 +217,6 @@ class MockCamera(threading.Thread):
                     val = 0.4 #have a +0.3 differential 
                 LCPL = np.zeros((IMG_HEIGHT, IMG_WIDTH)) + val
                 self._image_queue.put_nowait(LCPL)
-                #else:
-                #    self._image_queue.put_nowait(None)
             except queue.Full:
                 # No point in keeping this image around when the queue is full, let's skip to the next one
                 pass

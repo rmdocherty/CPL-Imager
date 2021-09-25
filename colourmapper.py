@@ -140,24 +140,60 @@ class ColourMapper():
         return out_im
 
     def gen_colourbar(self):
+        """
+        gen_colourbar.
+
+        Given the mode of the cmapper, get the colourbar responding to the mode's
+        colourmap in the form of a PIL image. For the 'Raw' this obviously needs
+        to be two colourbars stacked next to each other.
+
+        Returns
+        -------
+        out : PIL IMAGE
+            Colourbar(s) corresponding to the cmap mode.
+
+        """
         if self._mode == "Raw":
             cmap1, cmap2 = self._cmaps["Raw"]
             limits = np.array([[0, 1]])
-            cbar1, cbar2 = self._single_colourmap(limits, cmap1), self._single_colourmap(limits, cmap2)
+            cbar1, cbar2 = self._single_colourbar(limits, cmap1), self._single_colourmap(limits, cmap2)
             out = Image.new('RGBA', (cbar1.width + cbar2.width, cbar1.height))
             out.paste(cbar1, (0, 0))
             out.paste(cbar2, (cbar1.width, 0))
         elif self._mode == "DOCP":
             cmap1 = self._cmaps["DOCP"]
             limits = np.array([[0, 1]])
-            out = self._single_colourmap(limits, cmap1)
+            out = self._single_colourbar(limits, cmap1)
         elif self._mode == "g_em":
             cmap1 = self._cmaps["g_em"]
             limits = np.array([[-2, 2]])
-            out = self._single_colourmap(limits, cmap1)
+            out = self._single_colourbar(limits, cmap1)
         return out
 
-    def _single_colourmap(self, limits, cmap_string):
+    def _single_colourbar(self, limits, cmap_string):
+        """
+        single_colourbar.
+
+        Given limits and colourmap string, generate PIL image of the colourbar
+        and return it. This unfortunately involves creating a matplotlib plot
+        of just the colourbar, grabbing the renderer data as bytes and feeding
+        it into a new PIL image, casuing an ugly popup whenever modes are
+        switched (sorry!).
+
+        Parameters
+        ----------
+        limits : np.array
+            np.array of the limits of the colourmap (0-1 for raw/DOCP and
+            -2-+2 for g_em).
+        cmap_string : STR
+            String corresponding to a matplotlib colourmap.
+
+        Returns
+        -------
+        img : PIL IMAGE
+            Colourbar(s) corresponding to the cmap mode..
+
+        """
         LEFT = 0.05
         BOTTOM = 0.2
         WIDTH = 0.08

@@ -16,12 +16,14 @@ try:
 except ImportError:
     import queue
 from datetime import datetime
-from os import mkdir
+from os import mkdir, path
+
 
 def clearQueue(queue):
     while not queue.empty():
         queue.get()
     return 0
+
 
 class CPL_Viewer(tk.Frame):
     """
@@ -35,6 +37,7 @@ class CPL_Viewer(tk.Frame):
     """
 
     def __init__(self, master=None):
+        mkdir("photos") if not path.exists("photos") else None #create photos folder if doesn't already exist
         tk.Frame.__init__(self, master)
         self._live = True
 
@@ -58,12 +61,13 @@ class CPL_Viewer(tk.Frame):
         if self._live is False:
             clearQueue(self._CQ)
             print("Taking static photo")
-            self._CQ.put_nowait("Photo")#put("Photo", block=True, timeout=0.)
+            self._CQ.put_nowait("Photo")
             self._camera_widget._get_image()
-            #self._CQ.put_nowait("Off")
         self._camera_widget.take_photo()
-        
+
     def _toggle_live(self):
+        """Pause the live view - used for compact setup to avoid overusing the
+        rotation motor."""
         clearQueue(self._CQ)
         if self._live is True:
             self._live = False
@@ -75,6 +79,7 @@ class CPL_Viewer(tk.Frame):
             self._CQ.put_nowait("Live")##put("Live", block=True, timeout=0.01)
 
     def _cmap_window(self):
+        """Popup window to set colourmaps during operation."""
         self._cmap_menu = tk.Toplevel()
         self._cmap_menu.title("Colour map selector")
         LCPL = tk.Text(self._cmap_menu, height=2, width=30)
@@ -108,6 +113,7 @@ class CPL_Viewer(tk.Frame):
         self._cmap_menu.destroy()
 
     def _calibrate_window(self):
+        """Popup window to generate multiplicative correction map for cameras."""
         self._calibrate_menu = tk.Toplevel()
         self._calibrate_menu.title("Calibration")
 
@@ -123,6 +129,8 @@ class CPL_Viewer(tk.Frame):
         self._calibrate_menu_text_fields = [LCPL_uniform, RCPL_uniform]
     
     def _gen_correction(self):
+        """Given expected intensity of Reference Polarization State (RPS), create
+        correction map."""
         data = self._camera_widget._np_array
         LCPL_btn = self._calibrate_menu_text_fields[0]
         RCPL_btn = self._calibrate_menu_text_fields[1]
@@ -144,6 +152,7 @@ class CPL_Viewer(tk.Frame):
         self._calibrate_menu.destroy()
 
     def _createWidgets(self):
+        """Add menu buttons to GUI and bind functions to them."""
         photo = tk.Button(text="Take Photo", command=self._take_photo)
         live = tk.Button(text="Toggle Video", command=self._toggle_live)
         calibrate = tk.Button(text="Calibrate", command=self._calibrate_window)
@@ -204,7 +213,10 @@ class LiveViewCanvas(tk.Canvas):
         self._RCPL_mask = RCPL
 
     def _pack_cbar_img(self, cbar_img):
-        #apparently need to save permanenet reference to image (i.e object scale rather than local, as otherwwise wown't show)
+        """Given PIL image of colorbar, add it to tkinter canvas and pack
+        canavs to RHS of image. The TkPhotoImage is saved to an attribute as
+        config needs a permanent reference to image otherwise won't display."""
+        self._cbar_img_pil = cbar_img
         self._cbar_img = ImageTk.PhotoImage(master=self._cbar_canv, image=cbar_img)
         self._cbar_canv.config(width=self._cbar_img.width(), height=self._cbar_img.height())
         self._cbar_canv.create_image(0, 0, image=self._cbar_img, anchor='nw')
@@ -220,6 +232,10 @@ class LiveViewCanvas(tk.Canvas):
         self._cmap.set_cmaps(cmap_list)
 
     def _get_image(self):
+        """Grab the two images (LCPL & RCPL) from their two queues, apply
+        correction (if it exist) then combine the iumage data into one array
+        and colourmap it. Next resize these images and draw them onto the canvas.
+        If either queue is empty, pass."""
         iq1 = self.image_queue1
         iq2 = self.image_queue2
         try:
@@ -227,8 +243,8 @@ class LiveViewCanvas(tk.Canvas):
             image2 = iq2.get_nowait()
             image1 = image1 * self._LCPL_mask
             image2 = image2 * self._RCPL_mask
-            if self._type == "2cam":
-                image2 = image2[::-1] #USE THISIN 2 CAM SETUPS!!!
+            if self._type == "2cam": #when second camera added, beamsplitter means you need to flip the second image so LCPL and RCPl right way up
+                image2 = image2[::-1]
 
             self._np_array = np.hstack((image1, image2))
             unrotated_img = self._cmap.colour_map(image1, image2)
@@ -246,17 +262,22 @@ class LiveViewCanvas(tk.Canvas):
             self._draw_intensity()
         except queue.Empty:
             pass
-        self.after(20, self._get_image)
+        self.after(20, self._get_image) #repeat this function every 20ms
 
     def take_photo(self):
-        """Take snapshot of current image by using the _img_data image."""
+        """Take snapshot of current image on the canvas and save as bitmap.
+        Creates a new folder in the the photos directory that contains the
+        colourmapped image in bmp form, the original image data in csv, txt and
+        npy form, an image of the colorbar used and the mask data."""
         timestamp = datetime.now()
         timestamp_string = timestamp.strftime("%d-%m-%y_%H:%M:%S_%f")
         directory = "photos/" + timestamp_string
         mkdir(directory)
         file_path = directory + "/" + timestamp_string
-        self._img_data.save(file_path + ".bmp", format="bmp")
-        np.save(file_path, self._np_array)
+
+        self._img_data.save(file_path + ".bmp", format="bmp") #save photo
+        self._cbar_img_pil.save(file_path + "_colorbar.bmp", format="bmp") #save colorbar
+        np.save(file_path, self._np_array) #save np array of raw wdata
         with open(file_path + ".txt", 'w') as txt_f, open(file_path + ".csv", 'w') as csv_f:
             writer = csv.writer(csv_f)
             for row in self._np_array:
@@ -278,6 +299,11 @@ class LiveViewCanvas(tk.Canvas):
                     txt.write("1 \n")
 
     def _get_intensity_at_cursor(self, event):
+        """Get intensity of image at the location of the mouse cursor. However
+        the image on screen is resized from the original data so must scale the
+        cursor position based on the size ratios and get intesnity at that
+        rescaled position. Intensity depends on which mode we're in so need to
+        recalculate the metric each time."""
         try:
             x, y = event.x, event.y
 
@@ -300,8 +326,9 @@ class LiveViewCanvas(tk.Canvas):
                 g_em = (2 * (LCPL - RCPL)) / (LCPL + RCPL)
                 x_prime, y_prime = int(x * scale_factor_x), int(y * scale_factor_y)
                 self._intensity = g_em[y_prime, x_prime]
-        except IndexError:
+        except IndexError: #if out of bounds then pass
             x, y = 0, 0
 
     def _draw_intensity(self):
+        """Draw the current intensity to the screen."""
         self.create_text(10, 10, anchor=tk.W, fill="Black", font="Arial", text=f"{self._mode}:{self._intensity:.4f}")

@@ -107,25 +107,11 @@ class CPL_Imager_One_Camera(CPL_Imager):
     A child class from CPL_Imager intended for use when only one camera is
     connected to the computer. First checks which 'handedness' of camera is
     attached i.e is it the LCPL or RCPL camera and switches the image queues
-    accordingly (this is so it will be colourmapped correctly). The second
-    camera is replaced by a MockCamera that constantly puts None into the
-    queue, which will then be grabbed by the Canvas and processed correctly
-    by ColourMapper.
+    accordingly (this is so it will be colourmapped correctly).
     """
 
     def _gen_image_acquisition_threads(self, cam1, cam2):
         return (ImageAcquisitionThread(cam1), cam2)
-
-    def _gen_widget(self, image_queue1, image_queue2):
-        if self._camera_handedness in ["l", "lcpl", "left"]:
-            camera_widget = LiveViewCanvas(parent=self._root, iq1=image_queue1,
-                                           iq2=image_queue2)
-        elif self._camera_handedness in ["r", "rcpl", "right"]: #swap image queues
-            camera_widget = LiveViewCanvas(parent=self._root, iq1=image_queue2,
-                                           iq2=image_queue1)
-        else:
-            raise Exception("Please enter which camera is plugged in")
-        return camera_widget
 
     def _start_camera(self, cam):
         cam.frames_per_trigger_zero_for_unlimited = 0
@@ -142,22 +128,6 @@ class CPL_Imager_One_Camera(CPL_Imager):
             print(camera_list)
             with sdk.open_camera(camera_list[0]) as cam1:
                 self._main_function(cam1)
-
-    def _main_function(self, cam):
-        image_acquisition_thread = SingleCamera(cam)
-        camera_widget = self._gen_widget(image_acquisition_thread.get_output_queue(),
-                                         image_acquisition_thread.get_output_queue_2())
-        self._GUI.set_camera_widget(camera_widget)
-        #self._GUI.set_control_queue("")
-        self._start_camera(cam)
-        image_acquisition_thread.start()
-
-        print("Viewer starting")
-        self._root.mainloop()
-
-        image_acquisition_thread.stop()
-        image_acquisition_thread.join()
-        print("Closing resources...")
 
 
 class Compact_CPL_Imager(CPL_Imager_One_Camera):
