@@ -40,6 +40,7 @@ class CPL_Viewer(tk.Frame):
         mkdir("photos") if not path.exists("photos") else None #create photos folder if doesn't already exist
         tk.Frame.__init__(self, master)
         self._live = True
+        self.master=master
 
     def set_camera_widget(self, camera_widget_object):
         self._camera_widget = camera_widget_object
@@ -65,7 +66,7 @@ class CPL_Viewer(tk.Frame):
             self._camera_widget._get_image()
         self._camera_widget.take_photo()
 
-    def _toggle_live(self):
+    def _toggle_live(self, mode):
         """Pause the live view - used for compact setup to avoid overusing the
         rotation motor."""
         clearQueue(self._CQ)
@@ -77,6 +78,18 @@ class CPL_Viewer(tk.Frame):
             self._live = True
             print("Live view on")
             self._CQ.put_nowait("Live")##put("Live", block=True, timeout=0.01)
+
+    def settings_window(self):
+        pad = 1
+        self.settings_menu = tk.Toplevel()
+        self.settings_menu.geometry("220x100")
+        self.settings_menu.title("Settings")
+        tick_check = tk.Checkbutton(self.settings_menu, text= "Axes")
+        tick_check.grid(column=0, row=0, padx=pad, pady=pad)
+        grid_check = tk.Checkbutton(self.settings_menu, text= "Grid")
+        grid_check.grid(column=0, row=1, padx=pad, pady=pad)
+        cmap_btn = tk.Button(self.settings_menu, text="Change cmaps", command=self._cmap_window)
+        cmap_btn.grid( column=0, row=2, padx=pad, pady=pad)
 
     def _cmap_window(self):
         """Popup window to set colourmaps during operation."""
@@ -115,25 +128,34 @@ class CPL_Viewer(tk.Frame):
     def _calibrate_window(self):
         """Popup window to generate multiplicative correction map for cameras."""
         self._calibrate_menu = tk.Toplevel()
+        self._calibrate_menu.geometry("220x100")
         self._calibrate_menu.title("Calibration")
 
-        LCPL_uniform = tk.Text(self._calibrate_menu, height=2, width=30)
-        LCPL_uniform.grid(column=1, row=0)
-        LCPL_text = tk.Label(self._calibrate_menu, text="LCPL in RPS:").grid(column=0, row=0)
-        RCPL_uniform = tk.Text(self._calibrate_menu, height=2, width=30)
-        RCPL_uniform.grid(column=1, row=1)
-        RCPL_text = tk.Label(self._calibrate_menu, text="RCPL in RPS:").grid(column=0, row=1)
-        correction_map = tk.Button(self._calibrate_menu, text="Generate correction", command=self._gen_correction).grid(column=0, row=2, columnspan=2)
+        correction_map = tk.Button(self._calibrate_menu, text="RPS correction", command=self.rps_window).grid(column=0, row=1) #, columnspan=2
+        spatial_calibrate = tk.Button(self._calibrate_menu, text="Spatial calibration", command=self._finish_calibrate).grid(column=0, row=2)
+        roi_calibrate = tk.Button(self._calibrate_menu, text="ROI calibration", command=self._finish_calibrate).grid(column=0, row=3)
+    
+    def rps_window(self):
+        self.rps_menu = tk.Toplevel()
+        self.rps_menu.title("RPS Calibration")
+        self.rps_menu.geometry("220x100")
 
-        finish_calibrate = tk.Button(self._calibrate_menu, text="Finish", command=self._finish_calibrate).grid(column=0, row=3, columnspan=2)
-        self._calibrate_menu_text_fields = [LCPL_uniform, RCPL_uniform]
+        LCPL_uniform = tk.Text(self.rps_menu, height=1, width=8)
+        LCPL_uniform.grid(column=1, row=0)
+        LCPL_text = tk.Label(self.rps_menu, text="LCPL in RPS:").grid(column=0, row=0)
+        RCPL_uniform = tk.Text(self.rps_menu, height=1, width=8)
+        RCPL_uniform.grid(column=1, row=1)
+        RCPL_text = tk.Label(self.rps_menu, text="RCPL in RPS:").grid(column=0, row=1)
+        finish_rps = tk.Button(self.rps_menu, text="Finish", command=self.finish_rps).grid(column=1, row=3)
+        self.rps_menu_text_fields = [LCPL_uniform, RCPL_uniform]
+        
     
     def _gen_correction(self):
         """Given expected intensity of Reference Polarization State (RPS), create
         correction map."""
         data = self._camera_widget._np_array
-        LCPL_btn = self._calibrate_menu_text_fields[0]
-        RCPL_btn = self._calibrate_menu_text_fields[1]
+        LCPL_btn = self.rps_menu_text_fields[0]
+        RCPL_btn = self.rps_menu_text_fields[1]
         zero_thresh = 0.2
         try:
             ref_LCPL_intensity = float(LCPL_btn.get("1.0", "end-1c"))
@@ -150,23 +172,47 @@ class CPL_Viewer(tk.Frame):
 
     def _finish_calibrate(self):
         self._calibrate_menu.destroy()
+    
+    def finish_rps(self):
+        self._gen_correction()
+        self.rps_menu.destroy()
 
     def _createWidgets(self):
         """Add menu buttons to GUI and bind functions to them."""
         photo = tk.Button(text="Take Photo", command=self._take_photo)
-        live = tk.Button(text="Toggle Video", command=self._toggle_live)
+        live = tk.Label(text="Rotator")
         calibrate = tk.Button(text="Calibrate", command=self._calibrate_window)
-        cmap_btn = tk.Button(text="Set Cmaps", command=self._cmap_window)
+        cmap_btn = tk.Button(text="Settings", command=self.settings_window)
         label = tk.Label(text="Modes:")
-
-        raw_btn = tk.Button(text="Raw", command=self._switch_to_raw)
-        DOCP_btn = tk.Button(text="DOCP", command=self._switch_to_DOCP)
-        g_em_btn = tk.Button(text="dA", command=self._switch_to_g_em)
-        btns = [photo, live, calibrate, cmap_btn, label, raw_btn, DOCP_btn, g_em_btn]
+        
+        toggle = ("On", "Off")
+        toggle_default = tk.StringVar(self.master)
+        toggle_default.set("On")
+        toggle_dropdown = tk.OptionMenu(self.master, toggle_default, toggle[0], *toggle[1:], command=self._toggle_live)
+        
+        options = ("raw", "DOCP", "dA")
+        default = tk.StringVar(self.master)
+        default.set("raw")
+        dropdown = tk.OptionMenu(self.master, default, options[0], *options[1:], command=self.switch)
+        
+        btns = [photo, live, label, calibrate, cmap_btn] #raw_btn, DOCP_btn, g_em_btn
         pad = 1
         for index, b in enumerate(btns):
-            b.grid(column=0, row=index, ipadx=pad, ipady=pad, padx=pad, pady=pad)
+            colspan = 2 if index in [0, 3, 4] else 1
+            b.grid(column=0, row=index, ipadx=pad, ipady=pad, padx=pad, pady=pad, columnspan=colspan)
+        dropdown.grid(column=1, row=2,  sticky=tk.W, padx=5, pady=5)
+        toggle_dropdown.grid(column=1, row=1,  sticky=tk.W, padx=5, pady=5)
 
+    def switch(self, mode):
+        print(mode)
+        #mode = self.dropdown.get()
+        if mode == "raw":
+            self._switch_to_raw()
+        elif mode == "DOCP":
+            self._switch_to_DOCP()
+        else:
+            self._switch_to_g_em()
+            
 
 class LiveViewCanvas(tk.Canvas):
     """LiveViewCanvas.
@@ -197,11 +243,14 @@ class LiveViewCanvas(tk.Canvas):
 
         self._intensity = 0
         self.bind_all('<Motion>', self._get_intensity_at_cursor)
+        self.bind("<ButtonPress-1>", self.add_click)
+        self.clicks = []
+        
         # need the columnspan and row span to make alignment nice
-        self.grid(column=1, row=0, columnspan=5, rowspan=5)
+        self.grid(column=2, row=0, columnspan=5, rowspan=5)
 
         self._cbar_canv = tk.Canvas(parent)#parent
-        self._cbar_canv.grid(column=6, row=0, rowspan=5, columnspan=1)
+        self._cbar_canv.grid(column=7, row=0, rowspan=5, columnspan=1)
 
         self.set_cmap_mode("Raw")
         self._sizes = {"Raw": (720, 360), "DOCP": (360, 360), "g_em": (360, 360)}
@@ -260,6 +309,7 @@ class LiveViewCanvas(tk.Canvas):
                 self.config(width=self._image_width, height=self._image_height)
             self.create_image(0, 0, image=self._image, anchor='nw')
             self._draw_intensity()
+            crosses = [self.draw_crosses(c) for c in self.clicks]
         except queue.Empty:
             pass
         self.after(20, self._get_image) #repeat this function every 20ms
@@ -336,3 +386,50 @@ class LiveViewCanvas(tk.Canvas):
         else:
             draw_text = self._mode
         self.create_text(10, 10, anchor=tk.W, fill="Black", font="Arial", text=f"{draw_text}:{self._intensity:.4f}")
+
+    def add_click(self, event):
+        self.clicks.append((event.x, event.y))
+        
+        if len(self.clicks) == 2:
+            self.spatial_calibrate()
+            
+        
+        print(event.x, event.y)
+    
+    def draw_crosses(self, c):
+        self.create_text(c[0], c[1], anchor=tk.W, font="Arial", text="X", fill="Orange")
+    
+    def spatial_calibrate(self):
+        clicks = self.clicks
+        dx = np.abs(clicks[0][0] - clicks[1][0])
+        dy = np.abs(clicks[0][1] - clicks[1][1])
+        self.click_dist = np.sqrt(dx**2 + dy**2)
+        
+        self.spatial_menu = tk.Toplevel()
+        self.spatial_menu.title("Spatial Calibration")
+        self.spatial_menu.geometry("220x100")
+        enter_dist = tk.Text(self.spatial_menu, height=1, width=8)
+        enter_dist.grid(column=1, row=1)
+        query = tk.Label(self.spatial_menu, text="Reference distance (mm): ").grid(column=0, row=1)
+        finish_spatial = tk.Button(self.spatial_menu, text="Finish", command=self.finish_spatial).grid(column=1, row=3)
+        self.spatial_menu_text_field = enter_dist
+    
+    def finish_spatial(self):
+        field = self.spatial_menu_text_field
+        try:
+            ref_dist = float(field.get("1.0", "end-1c"))
+        except (ValueError, AttributeError): #assume a 50/50 split state (45 deg)
+            ref_dist = 0.5
+        self.pixels_per_mm = self.click_dist / ref_dist
+        self.clicks = []
+        print(f"{self.pixels_per_mm} pixels per mm!")
+    
+    def draw_ticks(self, offset_x, offset_y):
+        return
+    
+    def calculate_tick_spacing(self, axes_length):
+        total_dist = self.pixels_per_mm / axes_length
+        
+        
+        
+    

@@ -32,6 +32,7 @@ class CPL_Imager():
 
     def __init__(self):
         self._root = tk.Tk()
+        self._root.iconbitmap('photos\\CPL.ico')
         self._GUI = CPL_Viewer(master=self._root)
         self._root.title("CPL Imager")
 
@@ -140,13 +141,20 @@ class Compact_CPL_Imager(CPL_Imager_One_Camera):
     polarizer on a rotating mount. Takes image every 0.2 seconds in alteranting
     polarizations.
 
-    TODO: add a 'free cam' mode for the one camera setup that lets you use the camera
+    TODO: 
+    1) add a 'free cam' mode for the one camera setup that lets you use the camera
     w/out the rotator to align/calibrate things in real-time. Hacky way to do this would
     be to just kill the current IAT and make a new single camera one that is linked to GUI,
-    then restart the _main_function of the compact camera. Also add an ROI calibration
-    option to the GUI alongside the spatial calibration. BIG IDEA: tie all this down to a
+    then restart the _main_function of the compact camera. BIG IDEA: tie all this down to a
     rotator on/off toggle box i.e when rotator on then compact thread when off use single
-    thread (this saves menu space).
+    thread (this saves menu space)
+    2) add an ROI calibration option to the GUI alongside. 
+    3) make it work with Windows and Linux at runtime. 
+    4) Also scan ports so don't need to user supply (or is that over kill?).
+    5) J/M want four views on screen at once: LCPL, RCPL, dA and CD (which can change
+    to DOCP or G if needed). Sneaky plan: use mode for 4th quadrant, then hstack and
+    vstack so the live view is all 4 pictures! Will require intensity mouseover rethink                                                                     
+    6) add spatial calibration based on defining a distance on 2 clicks on screen
     """
 
     def run(self):
