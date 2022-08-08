@@ -6,15 +6,17 @@ Created on Fri Jul 30 10:51:34 2021
 @author: ronan
 """
 #TODO: consider how it works on Windows by looking at Thorlabs examples
+try:
+    # if on Windows, use the provided setup script to add the DLLs folder to the PATH
+    from windows_setup import configure_path
+    configure_path()
+except ImportError:
+    configure_path = None
 from thorlabs_tsi_sdk.tl_camera import TLCameraSDK
 from cameras import ImageAcquisitionThread, CompactImageAcquisitionThread, MockCamera
 from GUI import CPL_Viewer, LiveViewCanvas
 from time import sleep
-try:
-    #  For python 2.7 tkinter is named Tkinter
-    import Tkinter as tk
-except ImportError:
-    import tkinter as tk
+import tkinter as tk
 
 
 class CPL_Imager():
@@ -137,6 +139,14 @@ class Compact_CPL_Imager(CPL_Imager_One_Camera):
     For use in the compact optical design - i.e a single camera and a linear
     polarizer on a rotating mount. Takes image every 0.2 seconds in alteranting
     polarizations.
+
+    TODO: add a 'free cam' mode for the one camera setup that lets you use the camera
+    w/out the rotator to align/calibrate things in real-time. Hacky way to do this would
+    be to just kill the current IAT and make a new single camera one that is linked to GUI,
+    then restart the _main_function of the compact camera. Also add an ROI calibration
+    option to the GUI alongside the spatial calibration. BIG IDEA: tie all this down to a
+    rotator on/off toggle box i.e when rotator on then compact thread when off use single
+    thread (this saves menu space).
     """
 
     def run(self):
@@ -205,4 +215,4 @@ if __name__ == "__main__":
             imager = CPL_Imager_No_Camera()
         else:
             raise Exception("Too many cameras!")
-        imager.run()
+    imager.run()

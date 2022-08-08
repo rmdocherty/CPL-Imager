@@ -99,7 +99,7 @@ class ColourMapper():
 
         elif self._mode == "g_em":
             cmap = self._cmaps["g_em"]
-            g_em = (img1 - img2) / (img1 + img2) #from equation, ignore factor of 2
+            g_em = (img1 - img2) #/ (img1 + img2) #from equation, ignore factor of 2
             # g_em = g_em + 1
             g_em = (g_em + 1) / 2 #rescale from -1,+1 to 0,+1 for cmapping
             mapped = self._single_cmap(g_em, cmap)
@@ -156,7 +156,7 @@ class ColourMapper():
         if self._mode == "Raw":
             cmap1, cmap2 = self._cmaps["Raw"]
             limits = np.array([[0, 1]])
-            cbar1, cbar2 = self._single_colourbar(limits, cmap1), self._single_colourmap(limits, cmap2)
+            cbar1, cbar2 = self._single_colourbar(limits, cmap1), self._single_colourbar(limits, cmap2)
             out = Image.new('RGBA', (cbar1.width + cbar2.width, cbar1.height))
             out.paste(cbar1, (0, 0))
             out.paste(cbar2, (cbar1.width, 0))
@@ -166,7 +166,7 @@ class ColourMapper():
             out = self._single_colourbar(limits, cmap1)
         elif self._mode == "g_em":
             cmap1 = self._cmaps["g_em"]
-            limits = np.array([[-2, 2]])
+            limits = np.array([[-1, 1]]) #was -2, +2
             out = self._single_colourbar(limits, cmap1)
         return out
 

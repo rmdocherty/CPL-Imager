@@ -55,7 +55,7 @@ class CPL_Viewer(tk.Frame):
         self._camera_widget.set_cmap_mode("DOCP")
 
     def _switch_to_g_em(self):
-        self._camera_widget.set_cmap_mode("g_em")
+        self._camera_widget.set_cmap_mode("g_em") #was g_em
 
     def _take_photo(self):
         if self._live is False:
@@ -89,7 +89,7 @@ class CPL_Viewer(tk.Frame):
         DOCP = tk.Text(self._cmap_menu, height=2, width=30)
         DOCPL_text = tk.Label(self._cmap_menu, text="DOCP:")
         g_em = tk.Text(self._cmap_menu, height=2, width=30)
-        g_em_text = tk.Label(self._cmap_menu, text="g_em:")
+        g_em_text = tk.Label(self._cmap_menu, text="dA:")
 
         self._cmap_menu_fields = [LCPL, RCPL, DOCP, g_em]
 
@@ -161,7 +161,7 @@ class CPL_Viewer(tk.Frame):
 
         raw_btn = tk.Button(text="Raw", command=self._switch_to_raw)
         DOCP_btn = tk.Button(text="DOCP", command=self._switch_to_DOCP)
-        g_em_btn = tk.Button(text="g_em", command=self._switch_to_g_em)
+        g_em_btn = tk.Button(text="dA", command=self._switch_to_g_em)
         btns = [photo, live, calibrate, cmap_btn, label, raw_btn, DOCP_btn, g_em_btn]
         pad = 1
         for index, b in enumerate(btns):
@@ -323,7 +323,7 @@ class LiveViewCanvas(tk.Canvas):
                 DOCP = (LCPL + RCPL) / 2
                 self._intensity = DOCP[y_prime, x_prime]
             elif self._mode == "g_em":
-                g_em = (2 * (LCPL - RCPL)) / (LCPL + RCPL)
+                g_em = (LCPL - RCPL)#(2 * (LCPL - RCPL)) / (LCPL + RCPL)
                 x_prime, y_prime = int(x * scale_factor_x), int(y * scale_factor_y)
                 self._intensity = g_em[y_prime, x_prime]
         except IndexError: #if out of bounds then pass
@@ -331,4 +331,8 @@ class LiveViewCanvas(tk.Canvas):
 
     def _draw_intensity(self):
         """Draw the current intensity to the screen."""
-        self.create_text(10, 10, anchor=tk.W, fill="Black", font="Arial", text=f"{self._mode}:{self._intensity:.4f}")
+        if self._mode == "g_em":
+            draw_text = "dA"
+        else:
+            draw_text = self._mode
+        self.create_text(10, 10, anchor=tk.W, fill="Black", font="Arial", text=f"{draw_text}:{self._intensity:.4f}")

@@ -13,6 +13,8 @@ import threading
 import queue
 import numpy as np
 from time import sleep
+from skimage import draw
+import random
 
 np.random.seed(1)
 IMG_HEIGHT = 360 # can go at least as high as 1000x1000 - don't know what upper limit is!
@@ -109,7 +111,7 @@ class CompactImageAcquisitionThread(ImageAcquisitionThread):
         self._imaging_LCPl = True
         self._image_queue = queue.Queue(maxsize=1)
         self._image_queue_2 = queue.Queue(maxsize=1)
-        self._rotator = rotator.Rotator("/dev/ttyUSB0")
+        self._rotator = rotator.Rotator("COM3") #was /dev/ttyUSB0
         self._mode = "Live"
         self._control_queue = queue.Queue(maxsize=2)
 
@@ -183,6 +185,32 @@ class CompactImageAcquisitionThread(ImageAcquisitionThread):
         self._stop_event.set()
 
 
+def make_circle(arr, radius=120, val=0.5):
+    x, y = arr.shape[0] // 2, arr.shape[1] // 2
+    for i in range(x - radius // 2, x + radius // 2):
+        for j in range(y - radius // 2, x + radius // 2):
+            dist = np.sqrt((i-x)**2 + (j-y) ** 2)
+            if dist <= radius:
+                arr[y, x] = val #- 0.1 * np.exp(dist - radius) #decrease around edge
+    return arr
+
+def make_noise(arr, pos, radius=60, max_noise=0.2, repeats=50):
+    for i in range(repeats):
+        sign = random.choice([-1, 1])
+        y, x = pos[1], pos[0]
+        new_x = random.randint(x - radius, x + radius)
+        new_y = random.randint(y - radius, y + radius)
+        dist = np.sqrt((new_x - x)**2 + (new_x - y) ** 2)
+        if dist > radius:
+            pass
+        else:
+            value = sign * random.random() * max_noise
+            rr, cc = draw.disk((new_x, new_y), 3)
+            arr[rr, cc] += value
+    return arr
+    
+
+
 class MockCamera(threading.Thread):
     """
     MockCamera.
@@ -212,11 +240,20 @@ class MockCamera(threading.Thread):
         while not self._stop_event.is_set():
             try:
                 if self._label == "left":
-                    val = 0.1
+                    val = 0.5#0.5
+                    offset_x = 10
                 else:
-                    val = 0.4 #have a +0.3 differential 
-                LCPL = np.zeros((IMG_HEIGHT, IMG_WIDTH)) + val
+                    val = 0.9 #have a +0.3 differential 
+                    offset_x = 0
+                LCPL = np.zeros((IMG_HEIGHT, IMG_WIDTH))
+                rr, cc = draw.disk((IMG_HEIGHT // 2, offset_x + IMG_WIDTH // 2), 60)
+                LCPL[rr, cc] = val
+                if self._label == "right":
+                    rr, cc = draw.disk((IMG_HEIGHT // 2, 20 + IMG_WIDTH // 2), 20)
+                    LCPL[rr, cc] -= 0.2
+                #LCPL = make_noise(LCPL, (IMG_HEIGHT // 2, IMG_WIDTH // 2))
                 self._image_queue.put_nowait(LCPL)
+                sleep(0.02)
             except queue.Full:
                 # No point in keeping this image around when the queue is full, let's skip to the next one
                 pass
