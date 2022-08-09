@@ -7,7 +7,7 @@ Created on Fri Jul 30 11:52:28 2021
 """
 import tkinter as tk
 import csv
-from colourmapper import ColourMapper
+from colourmapper import ColourMapper, json
 from PIL import ImageTk
 import numpy as np
 import queue
@@ -264,7 +264,12 @@ class LiveViewCanvas(tk.Canvas):
         self.bind_all('<Motion>', self._get_intensity_at_cursor)
         self.bind("<ButtonPress-1>", self.add_click)
         self.clicks = []
-        self.tick_spacing_px, self.tick_dist = 0, 0
+        
+        with open("config.json", "r") as config_file:
+            config_json = json.load(config_file)
+            self.pixels_per_mm = config_json["pixels_per_mm"]
+            self.tick_dist = config_json["tick_dist"]
+            self.tick_spacing_px = self.pixels_per_mm * self.tick_dist
         self.show_tick_bar = False
         self.show_tick_axes = False
         self.show_grid = False
@@ -376,6 +381,7 @@ class LiveViewCanvas(tk.Canvas):
                 writer.writerow(row)
                 txt_f.write(", ".join([str(col) for col in row]) + "\n")
         with open(file_path + "_metadata.txt", 'w') as txt:
+            txt.write(f"{timestamp_string} \n")
             txt.write(self._mode + "\n")
             txt.write("LCPL mask: \n")
             for row in self._LCPL_mask:
@@ -389,6 +395,7 @@ class LiveViewCanvas(tk.Canvas):
                     txt.write(", ".join([str(col) for col in row]) + "\n")
                 except TypeError:
                     txt.write("1 \n")
+            txt.write(f"{str(self.pixels_per_mm)} pixels per mm \n" )
 
     def _get_intensity_at_cursor(self, event):
         """Get intensity of image at the location of the mouse cursor. However
@@ -463,13 +470,17 @@ class LiveViewCanvas(tk.Canvas):
         except (ValueError, AttributeError): #assume a 50/50 split state (45 deg)
             print("Error in reference distance!")
             ref_dist = 0.5
-        print(f"click dist is {self.click_dist}, ref dist is {ref_dist}")
         self.pixels_per_mm = self.click_dist / ref_dist
-        print(f"pixesl per mm is {self.pixels_per_mm}")
         self.clicks = []
         tick_spacing_px, tick_spacing_mm = self.calculate_tick_spacing(360)
         dist_mm = tick_spacing_px / self.pixels_per_mm
         self.tick_spacing_px, self.tick_dist = tick_spacing_px, tick_spacing_mm
+        with open("config.json", "r") as config_file:
+            config_json = json.load(config_file)
+            config_json["pixels_per_mm"] = self.pixels_per_mm
+            config_json["tick_dist"] = self.tick_dist
+        with open("config.json", "w") as config_file:
+            json.dump(config_json, config_file)
         self.spatial_menu.destroy()
     
     def draw_line(self, offset_x=0, offset_y=360, max_px=360, orient="x",

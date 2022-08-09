@@ -13,6 +13,7 @@ import threading
 import queue
 import numpy as np
 from sys import platform
+import json
 from time import sleep
 from skimage import draw
 import random
@@ -50,9 +51,9 @@ class ImageAcquisitionThread(threading.Thread):
         """Grab corresponding (left or right) ROI config from the file, else
         use defaults."""
         try:
-            print(f"roi_config_{self._label}.txt")
-            f = open(f"roi_config_{self._label}.txt")
-            coords = [int(i.strip('\n')) for i in f.readlines()]
+            with open("config.json", "r") as config_file:
+                config_json = json.load(config_file)
+                coords = config_json["roi_"+self._label]
             ROI = (coords[0], coords[1], coords[2], coords[3])
             print(f"Setting ROI as {ROI}")
             self._camera.roi = ROI

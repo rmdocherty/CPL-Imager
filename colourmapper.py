@@ -10,6 +10,7 @@ from matplotlib import cm
 from PIL import Image
 import numpy as np # maybe can just import hstack by itself later
 import matplotlib.pyplot as plt
+import json
 
 class ColourMapper():
     """
@@ -49,16 +50,9 @@ class ColourMapper():
             strings.
         """
         cmap_dict = {}
-        with open("cmap_config.txt", "r") as configFile:
-            lines = configFile.readlines()
-            for line in lines:
-                param_list = line.split(":")
-                temp_mode = param_list[0]
-                # remove extra spaces and newlines
-                temp_cmap = param_list[1].strip(" ").strip("\n")
-                if temp_mode == "Raw": #will need 2 here
-                    temp_cmap = temp_cmap.split(",") #assume comma separated
-                cmap_dict[temp_mode] = temp_cmap
+        with open("config.json", "r") as config_file:
+            config_json = json.load(config_file)
+            cmap_dict = config_json["cmaps"]
         return cmap_dict
 
     def colour_map(self, img1, img2, debug=False):

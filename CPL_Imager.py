@@ -12,11 +12,9 @@ try:
     configure_path()
 except ImportError:
     configure_path = None
-from sys import platform
 from thorlabs_tsi_sdk.tl_camera import TLCameraSDK
 from cameras import ImageAcquisitionThread, CompactImageAcquisitionThread, MockCamera
-from GUI import CPL_Viewer, LiveViewCanvas
-from time import sleep
+from GUI import CPL_Viewer, LiveViewCanvas, platform
 import tkinter as tk
 
 
