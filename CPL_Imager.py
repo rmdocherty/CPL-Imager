@@ -154,7 +154,10 @@ class Compact_CPL_Imager(CPL_Imager_One_Camera):
     5) J/M want four views on screen at once: LCPL, RCPL, dA and CD (which can change
     to DOCP or G if needed). Sneaky plan: use mode for 4th quadrant, then hstack and
     vstack so the live view is all 4 pictures! Will require intensity mouseover rethink                                                                     
-    6) add spatial calibration based on defining a distance on 2 clicks on screen
+    6) add spatial calibration based on defining a distance on 2 clicks on screen (tick bar?)
+    7) combine all configs into a single config JSON file (inc new calibrations)
+    8) can you measure g_abs by just calibrating to light in w/out sample then putting sample in?      
+    9) a proper readme, install script (win+linux+rpi), manual, comments, types?                                                                
     """
 
     def run(self):
@@ -219,7 +222,6 @@ if __name__ == "__main__":
         elif len(camera_list) == 1: #compact design
             imager = Compact_CPL_Imager()
         elif len(camera_list) == 0:
-            #raise Exception("Please plug in at least one camera")
             imager = CPL_Imager_No_Camera()
         else:
             raise Exception("Too many cameras!")

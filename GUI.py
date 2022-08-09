@@ -10,11 +10,7 @@ import csv
 from colourmapper import ColourMapper
 from PIL import ImageTk
 import numpy as np
-try:
-    #  For Python 2.7 queue is named Queue
-    import Queue as queue
-except ImportError:
-    import queue
+import queue
 from datetime import datetime
 from os import mkdir, path
 
@@ -80,16 +76,20 @@ class CPL_Viewer(tk.Frame):
             self._CQ.put_nowait("Live")##put("Live", block=True, timeout=0.01)
 
     def settings_window(self):
-        pad = 1
+        pad = 3
         self.settings_menu = tk.Toplevel()
-        self.settings_menu.geometry("220x100")
+        self.settings_menu.geometry("220x220")
         self.settings_menu.title("Settings")
-        tick_check = tk.Checkbutton(self.settings_menu, text= "Axes")
-        tick_check.grid(column=0, row=0, padx=pad, pady=pad)
-        grid_check = tk.Checkbutton(self.settings_menu, text= "Grid")
-        grid_check.grid(column=0, row=1, padx=pad, pady=pad)
-        cmap_btn = tk.Button(self.settings_menu, text="Change cmaps", command=self._cmap_window)
-        cmap_btn.grid( column=0, row=2, padx=pad, pady=pad)
+        intensity_check = tk.Checkbutton(self.settings_menu, text="Intensity", width=9)
+        intensity_check.grid(column=0, row=0, padx=pad, pady=pad)
+        tick_check = tk.Checkbutton(self.settings_menu, text= "Tick", width=9)
+        tick_check.grid(column=0, row=1, padx=pad, pady=pad)
+        axes_check = tk.Checkbutton(self.settings_menu, text= "Axes", width=9)
+        axes_check.grid(column=0, row=2, padx=pad, pady=pad)
+        grid_check = tk.Checkbutton(self.settings_menu, text= "Grid", width=9)
+        grid_check.grid(column=0, row=3, padx=pad, pady=pad)
+        cmap_btn = tk.Button(self.settings_menu, text="Change cmaps", command=self._cmap_window, width=11)
+        cmap_btn.grid( column=0, row=4, padx=pad, pady=pad)
 
     def _cmap_window(self):
         """Popup window to set colourmaps during operation."""
@@ -131,9 +131,9 @@ class CPL_Viewer(tk.Frame):
         self._calibrate_menu.geometry("220x100")
         self._calibrate_menu.title("Calibration")
 
-        correction_map = tk.Button(self._calibrate_menu, text="RPS correction", command=self.rps_window).grid(column=0, row=1) #, columnspan=2
-        spatial_calibrate = tk.Button(self._calibrate_menu, text="Spatial calibration", command=self._finish_calibrate).grid(column=0, row=2)
-        roi_calibrate = tk.Button(self._calibrate_menu, text="ROI calibration", command=self._finish_calibrate).grid(column=0, row=3)
+        correction_map = tk.Button(self._calibrate_menu, text="RPS correction", command=self.rps_window, width=14).grid(column=0, row=1, padx=3, pady=2) #, columnspan=2
+        spatial_calibrate = tk.Button(self._calibrate_menu, text="Spatial calibration", command=self._finish_calibrate, width=14).grid(column=0, row=2, padx=3, pady=2)
+        roi_calibrate = tk.Button(self._calibrate_menu, text="ROI calibration", command=self._finish_calibrate, width=14).grid(column=0, row=3, padx=3, pady=2)
     
     def rps_window(self):
         self.rps_menu = tk.Toplevel()
@@ -179,10 +179,10 @@ class CPL_Viewer(tk.Frame):
 
     def _createWidgets(self):
         """Add menu buttons to GUI and bind functions to them."""
-        photo = tk.Button(text="Take Photo", command=self._take_photo)
-        live = tk.Label(text="Rotator")
-        calibrate = tk.Button(text="Calibrate", command=self._calibrate_window)
-        cmap_btn = tk.Button(text="Settings", command=self.settings_window)
+        photo = tk.Button(text="Take Photo", command=self._take_photo, width=9)
+        live = tk.Label(text="Rotator:")
+        calibrate = tk.Button(text="Calibrate", command=self._calibrate_window, width=9)
+        cmap_btn = tk.Button(text="Settings", command=self.settings_window, width=9)
         label = tk.Label(text="Modes:")
         
         toggle = ("On", "Off")
@@ -245,6 +245,10 @@ class LiveViewCanvas(tk.Canvas):
         self.bind_all('<Motion>', self._get_intensity_at_cursor)
         self.bind("<ButtonPress-1>", self.add_click)
         self.clicks = []
+        self.show_tick_bar = False
+        self.show_tick_axes = False
+        self.show_grid = False
+        self.show_intensity = True
         
         # need the columnspan and row span to make alignment nice
         self.grid(column=2, row=0, columnspan=5, rowspan=5)
@@ -279,7 +283,19 @@ class LiveViewCanvas(tk.Canvas):
 
     def set_cmaps(self, cmap_list):
         self._cmap.set_cmaps(cmap_list)
-
+    
+    def draw_overlays(self):
+        if self.show_intensity:
+            self._draw_intensity()
+        if self.show_grid:
+            self.draw_grid()
+        if self.show_tick_axes:
+            self.draw_tick_axes()
+        if self.show_tick_bar:
+            self.draw_tick_bar()
+        crosses = [self.draw_crosses(c) for c in self.clicks]
+        
+        
     def _get_image(self):
         """Grab the two images (LCPL & RCPL) from their two queues, apply
         correction (if it exist) then combine the iumage data into one array
@@ -307,9 +323,10 @@ class LiveViewCanvas(tk.Canvas):
                 self._image_width = self._image.width()
                 self._image_height = self._image.height()  #remove this scaling later!
                 self.config(width=self._image_width, height=self._image_height)
+            # DRAWING STUFF
             self.create_image(0, 0, image=self._image, anchor='nw')
-            self._draw_intensity()
-            crosses = [self.draw_crosses(c) for c in self.clicks]
+            self.draw_overlays()
+                
         except queue.Empty:
             pass
         self.after(20, self._get_image) #repeat this function every 20ms
@@ -419,17 +436,65 @@ class LiveViewCanvas(tk.Canvas):
         try:
             ref_dist = float(field.get("1.0", "end-1c"))
         except (ValueError, AttributeError): #assume a 50/50 split state (45 deg)
+            print("Error in reference distance!")
             ref_dist = 0.5
+        print(f"click dist is {self.click_dist}, ref dist is {ref_dist}")
         self.pixels_per_mm = self.click_dist / ref_dist
+        print(f"pixesl per mm is {self.pixels_per_mm}")
         self.clicks = []
-        print(f"{self.pixels_per_mm} pixels per mm!")
+        tick_spacing_px, tick_spacing_mm = self.calculate_tick_spacing(360)
+        dist_mm = tick_spacing_px / self.pixels_per_mm
+        self.set_tick_bar(tick_spacing_px, tick_spacing_mm)
+        self.spatial_menu.destroy()
     
-    def draw_ticks(self, offset_x, offset_y):
-        return
+    def draw_line(self, offset_x=0, offset_y=360, max_px=360, orient="x",
+                  size=7, color="black", text=True):
+        o1, o2 = (1, 0) if orient == "y" else (0, 1)
+        i = 0
+        while i*self.tick_spacing_px < max_px:
+            x1, x2 = offset_x+o1*i*self.tick_spacing_px, offset_x+o1*i*self.tick_spacing_px+o2*size  
+            y1, y2 = offset_y-o2*i*self.tick_spacing_px, offset_y-o2*i*self.tick_spacing_px-o1*size  
+            if text:
+                self.create_text(x2+3*o1, y2+5*o2, width=0.1, anchor=tk.W, fill=color, font=("Arial", 6), text=f"{i*self.tick_dist:.2f}")
+            self.create_line(x1, y1, x2, y2, fill=color)
+            i += 1
+    
+    def draw_tick_axes(self):
+        self.draw_line(orient="x")
+        self.draw_line(orient="y")
+    
+    def draw_grid(self):
+        #print("drawing grid")
+        self.draw_line(orient="x", color="Gray", size=360, text=False)
+        self.draw_line(orient="y", color="Gray", size=360, text=False)
     
     def calculate_tick_spacing(self, axes_length):
-        total_dist = self.pixels_per_mm / axes_length
+        total_ticks = 11
+        total_dist = axes_length / self.pixels_per_mm
+        print(f"axes dist is {total_dist} mm ")
+        order_of_magnitude = np.floor(np.log10(total_dist))
+        leading_val = 10**order_of_magnitude
+        print(f"leading val is {leading_val}")
+        tick_spacing = 0
+        for i in [leading_val, leading_val / 2, leading_val / 4, leading_val / 5, leading_val / 10]:
+            if total_dist / i < total_ticks:
+                tick_spacing = i
+        return self.pixels_per_mm * tick_spacing, tick_spacing
         
-        
+    def set_tick_bar(self, tick_spacing_px, tick_spacing_mm):
+        self.show_tick_bar = True
+        self.show_tick_axes = True
+        self.show_grid = True
+        self.tick_spacing_px = tick_spacing_px
+        self.tick_dist = tick_spacing_mm
+        print(f"Tick spacing mm is {tick_spacing_mm}, tick spacing px is {tick_spacing_px}")
+    
+    def draw_tick_bar(self):
+        x1, y1, x2, y2 = 10, 320, 10 + self.tick_spacing_px, 320
+        self.create_line(x1, y1, x2, y2)
+        self.create_line(x1, y1 + 4, x1, y1-4)
+        self.create_line(x2, y1 + 4, x2, y1-4)
+        self.create_text((x2 - x1) / 3, y1 + 14, width=0.1, anchor=tk.W, fill="Black", font=("Arial", 10), text=f"{self.tick_dist:.3f}mm")
+    
         
     
