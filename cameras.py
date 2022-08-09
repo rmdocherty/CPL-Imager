@@ -154,33 +154,20 @@ class CompactImageAcquisitionThread(ImageAcquisitionThread):
                         iq.put_nowait(pil_image)
                         self._imaging_LCPl = not self._imaging_LCPl #toggle bool
                 except queue.Full:
-                    # No point in keeping this image around when the queue is full, let's skip to the next one
                     pass
                 except Exception as error:
                     print("Encountered error: {error}, image acquisition will stop.".format(error=error))
                     break
-            elif self._mode == "Photo": #take single snapshot - delete this?
-                iq1 = self._image_queue
-                iq2 = self._image_queue_2
-
-                self._rotate_mount(rotator.HORIZONTAL)
-                frame = None
-                while frame is None:
-                    frame = self._camera.get_pending_frame_or_null() #block till img
-                pil_image = self._get_image(frame)
-                iq1.put(pil_image, block=True, timeout=0.1)
-
-                self._rotate_mount(rotator.VERTICAL)
-                frame2 = None
-                while frame2 is None:
-                    frame2 = self._camera.get_pending_frame_or_null() #block till img
-                pil_image2 = self._get_image(frame2)
-                iq2.put(pil_image2, block=True, timeout=0.1)
-                print("taken photo")
-
-                self._control_queue.put("Off", block=True, timeout=0.01)
-
-            else:
+            elif self._mode == "Free":
+                try:
+                    frame = self._camera.get_pending_frame_or_null()
+                    if frame is not None:
+                        np_image = self._get_image(frame)
+                        self._image_queue.put_nowait(np_image)
+                        self._image_queue_2.put_nowait(np_image)
+                except queue.Full:
+                    pass
+            else: #maybe put a new mode in here - free cam with no rotation and same image on both queues
                 pass
         print("Image acquisition has stopped")
         self._camera.disarm()
@@ -257,7 +244,7 @@ class MockCamera(threading.Thread):
                 if self._label == "right":
                     rr, cc = draw.disk((IMG_HEIGHT // 2, 20 + IMG_WIDTH // 2), 20)
                     LCPL[rr, cc] -= 0.2
-                #LCPL = make_noise(LCPL, (IMG_HEIGHT // 2, IMG_WIDTH // 2))
+
                 self._image_queue.put_nowait(LCPL)
                 sleep(0.02)
             except queue.Full:

@@ -91,6 +91,12 @@ class ColourMapper():
             else:
                 raise Exception("Must supply at least 1 image!")
 
+        elif self._mode == "CD":
+            dA = (img1 - img2)
+            cmap = self._cmaps["g_em"]
+            theta_mdeg = np.arctan( np.tanh( (np.ln(10)*dA)/4 )) * (180*10**3) / np.pi
+            mapped = self._single_cmap(theta_mdeg, cmap)
+
         elif self._mode == "g_em":
             cmap = self._cmaps["g_em"]
             g_em = (img1 - img2) #/ (img1 + img2) #from equation, ignore factor of 2
@@ -159,6 +165,10 @@ class ColourMapper():
             limits = np.array([[0, 1]])
             out = self._single_colourbar(limits, cmap1)
         elif self._mode == "g_em":
+            cmap1 = self._cmaps["g_em"]
+            limits = np.array([[-1, 1]]) #was -2, +2
+            out = self._single_colourbar(limits, cmap1)
+        elif self._mode == "CD":
             cmap1 = self._cmaps["g_em"]
             limits = np.array([[-1, 1]]) #was -2, +2
             out = self._single_colourbar(limits, cmap1)

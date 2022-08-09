@@ -150,12 +150,15 @@ class Compact_CPL_Imager(CPL_Imager_One_Camera):
     be to just kill the current IAT and make a new single camera one that is linked to GUI,
     then restart the _main_function of the compact camera. BIG IDEA: tie all this down to a
     rotator on/off toggle box i.e when rotator on then compact thread when off use single
-    thread (this saves menu space)
+    thread (this saves menu space). Now i quite like to be able to turn of rotator and
+    keep last 2 images, so maybe have 3 rotator modes: On, Off
     2) add an ROI calibration option to the GUI alongside. 
     5) J/M want four views on screen at once: LCPL, RCPL, dA and CD (which can change
     to DOCP or G if needed). Sneaky plan: use mode for 4th quadrant, then hstack and
-    vstack so the live view is all 4 pictures! Will require intensity mouseover rethink                                                                     
-    7) combine all configs into a single config JSON file (inc new calibrations)
+    vstack so the live view is all 4 pictures! Will require intensity mouseover rethinK?
+    Idea: be very lazy, eliminate the need for modes and just have 4 panels: LCPL, RCPL,
+    dA and CD. Rename all the DOCP stuff (cmap configs etc) to be CD. Adapt colorbar code
+    to put 4 on screen at once, much the same way 2 are put on screen.                                                                   
     8) can you measure g_abs by just calibrating to light in w/out sample then putting sample in?      
     9) a proper readme, install script (win+linux+rpi), manual, comments, types?                                                                
     """
@@ -198,7 +201,7 @@ class CPL_Imager_No_Camera(CPL_Imager):
     CPL_Imager_No_Camera.
 
     Another child class of CPL_Imager, designed for use with no cameras i.e as
-    a demo. Reallt just an extension of the ideas of One_Camera.
+    a demo. Really just an extension of the ideas of One_Camera.
     """
 
     def _gen_image_acquisition_threads(self, cam1, cam2):

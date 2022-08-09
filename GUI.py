@@ -70,11 +70,11 @@ class CPL_Viewer(tk.Frame):
         if self._live is True:
             self._live = False
             print("Live view off")
-            self._CQ.put_nowait("Off")##put("Off", block=True, timeout=0.01)
+            self._CQ.put_nowait("Free")# was "Off"
         else:
             self._live = True
             print("Live view on")
-            self._CQ.put_nowait("Live")##put("Live", block=True, timeout=0.01)
+            self._CQ.put_nowait("Live")
 
     def settings_window(self):
         pad = 3
@@ -136,7 +136,6 @@ class CPL_Viewer(tk.Frame):
         cmap_list = []
         for txt_field in self._cmap_menu_fields:
             text = txt_field.get("1.0", "end-1c")
-            print(text)
             cmap_list.append(text)
         try:
             self._camera_widget.set_cmaps(cmap_list)
@@ -223,8 +222,6 @@ class CPL_Viewer(tk.Frame):
         toggle_dropdown.grid(column=1, row=1,  sticky=tk.W, padx=5, pady=5)
 
     def switch(self, mode):
-        print(mode)
-        #mode = self.dropdown.get()
         if mode == "raw":
             self._switch_to_raw()
         elif mode == "DOCP":
@@ -282,7 +279,7 @@ class LiveViewCanvas(tk.Canvas):
         self._cbar_canv.grid(column=7, row=0, rowspan=5, columnspan=1)
 
         self.set_cmap_mode("Raw")
-        self._sizes = {"Raw": (720, 360), "DOCP": (360, 360), "g_em": (360, 360)}
+        self._sizes = {"Raw": (720, 360), "DOCP": (360, 360), "g_em": (360, 360), "CD": (360, 360)}
 
         self._get_image()
 
@@ -438,15 +435,11 @@ class LiveViewCanvas(tk.Canvas):
 
     def add_click(self, event):
         self.clicks.append((event.x, event.y))
-        
         if len(self.clicks) == 2:
             self.spatial_calibrate()
-            
-        
-        print(event.x, event.y)
     
     def draw_crosses(self, c):
-        self.create_text(c[0], c[1], anchor=tk.W, font="Arial", text="X", fill="Orange")
+        self.create_text(c[0]-3, c[1], anchor=tk.W, font=("Arial", 8), text="X", fill="Orange")
     
     def spatial_calibrate(self):
         clicks = self.clicks
@@ -487,30 +480,29 @@ class LiveViewCanvas(tk.Canvas):
                   size=7, color="black", text=True):
         o1, o2 = (1, 0) if orient == "y" else (0, 1)
         i = 0
+        oom = np.floor(np.log(self.tick_dist))
         while i*self.tick_spacing_px < max_px:
             x1, x2 = offset_x+o1*i*self.tick_spacing_px, offset_x+o1*i*self.tick_spacing_px+o2*size  
             y1, y2 = offset_y-o2*i*self.tick_spacing_px, offset_y-o2*i*self.tick_spacing_px-o1*size  
             if text:
-                self.create_text(x2+3*o1, y2+5*o2, width=0.1, anchor=tk.W, fill=color, font=("Arial", 6), text=f"{i*self.tick_dist:.2f}")
+                text = f"{i*self.tick_dist:.2f}"
+                self.create_text(x2+3*o1, y2+5*o2, width=0.1, anchor=tk.W, fill=color, font=("Arial", 6), text=text)
             self.create_line(x1, y1, x2, y2, fill=color)
             i += 1
-    
+
     def draw_tick_axes(self):
         self.draw_line(orient="x")
         self.draw_line(orient="y")
     
     def draw_grid(self):
-        #print("drawing grid")
         self.draw_line(orient="x", color="Gray", size=360, text=False)
         self.draw_line(orient="y", color="Gray", size=360, text=False)
     
     def calculate_tick_spacing(self, axes_length):
         total_ticks = 11
         total_dist = axes_length / self.pixels_per_mm
-        print(f"axes dist is {total_dist} mm ")
         order_of_magnitude = np.floor(np.log10(total_dist))
         leading_val = 10**order_of_magnitude
-        print(f"leading val is {leading_val}")
         tick_spacing = 0
         for i in [leading_val, leading_val / 2, leading_val / 4, leading_val / 5, leading_val / 10]:
             if total_dist / i < total_ticks:
@@ -523,7 +515,6 @@ class LiveViewCanvas(tk.Canvas):
         self.show_grid = True
         self.tick_spacing_px = tick_spacing_px
         self.tick_dist = tick_spacing_mm
-        print(f"Tick spacing mm is {tick_spacing_mm}, tick spacing px is {tick_spacing_px}")
     
     def draw_tick_bar(self):
         x1, y1, x2, y2 = 10, 320, 10 + self.tick_spacing_px, 320
