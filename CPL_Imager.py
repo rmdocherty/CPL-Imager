@@ -12,6 +12,7 @@ try:
     configure_path()
 except ImportError:
     configure_path = None
+from sys import platform
 from thorlabs_tsi_sdk.tl_camera import TLCameraSDK
 from cameras import ImageAcquisitionThread, CompactImageAcquisitionThread, MockCamera
 from GUI import CPL_Viewer, LiveViewCanvas
@@ -32,7 +33,11 @@ class CPL_Imager():
 
     def __init__(self):
         self._root = tk.Tk()
-        self._root.iconbitmap('photos\\CPL.ico')
+        if platform == "linux" or platform == "linux2":
+            file_sep = "/"
+        else:
+            file_sep = "\\"
+        self._root.iconbitmap(f'photos{file_sep}CPL.ico')
         self._GUI = CPL_Viewer(master=self._root)
         self._root.title("CPL Imager")
 
@@ -149,12 +154,9 @@ class Compact_CPL_Imager(CPL_Imager_One_Camera):
     rotator on/off toggle box i.e when rotator on then compact thread when off use single
     thread (this saves menu space)
     2) add an ROI calibration option to the GUI alongside. 
-    3) make it work with Windows and Linux at runtime. 
-    4) Also scan ports so don't need to user supply (or is that over kill?).
     5) J/M want four views on screen at once: LCPL, RCPL, dA and CD (which can change
     to DOCP or G if needed). Sneaky plan: use mode for 4th quadrant, then hstack and
     vstack so the live view is all 4 pictures! Will require intensity mouseover rethink                                                                     
-    6) add spatial calibration based on defining a distance on 2 clicks on screen (tick bar?)
     7) combine all configs into a single config JSON file (inc new calibrations)
     8) can you measure g_abs by just calibrating to light in w/out sample then putting sample in?      
     9) a proper readme, install script (win+linux+rpi), manual, comments, types?                                                                

@@ -12,6 +12,7 @@ import threading
 
 import queue
 import numpy as np
+from sys import platform
 from time import sleep
 from skimage import draw
 import random
@@ -111,7 +112,11 @@ class CompactImageAcquisitionThread(ImageAcquisitionThread):
         self._imaging_LCPl = True
         self._image_queue = queue.Queue(maxsize=1)
         self._image_queue_2 = queue.Queue(maxsize=1)
-        self._rotator = rotator.Rotator("COM3") #was /dev/ttyUSB0
+        if platform == "linux" or platform == "linux2":
+            port = "/dev/ttyUSB0"
+        else:
+            port = "COM3"
+        self._rotator = rotator.Rotator(port) #was /dev/ttyUSB0
         self._mode = "Live"
         self._control_queue = queue.Queue(maxsize=2)
 

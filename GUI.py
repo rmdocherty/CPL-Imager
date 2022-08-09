@@ -12,7 +12,8 @@ from PIL import ImageTk
 import numpy as np
 import queue
 from datetime import datetime
-from os import mkdir, path
+from os import mkdir, path, getcwd
+from sys import platform
 
 
 def clearQueue(queue):
@@ -78,18 +79,36 @@ class CPL_Viewer(tk.Frame):
     def settings_window(self):
         pad = 3
         self.settings_menu = tk.Toplevel()
-        self.settings_menu.geometry("220x220")
-        self.settings_menu.title("Settings")
-        intensity_check = tk.Checkbutton(self.settings_menu, text="Intensity", width=9)
-        intensity_check.grid(column=0, row=0, padx=pad, pady=pad)
-        tick_check = tk.Checkbutton(self.settings_menu, text= "Tick", width=9)
-        tick_check.grid(column=0, row=1, padx=pad, pady=pad)
-        axes_check = tk.Checkbutton(self.settings_menu, text= "Axes", width=9)
-        axes_check.grid(column=0, row=2, padx=pad, pady=pad)
-        grid_check = tk.Checkbutton(self.settings_menu, text= "Grid", width=9)
-        grid_check.grid(column=0, row=3, padx=pad, pady=pad)
+        self.settings_menu.geometry("240x220")
+        self.settings_menu.title("Overlays")
+        
         cmap_btn = tk.Button(self.settings_menu, text="Change cmaps", command=self._cmap_window, width=11)
-        cmap_btn.grid( column=0, row=4, padx=pad, pady=pad)
+        cmap_btn.grid( column=0, row=0, padx=pad, pady=pad)
+        
+        intensity_check = tk.Checkbutton(self.settings_menu, text="Intensity", width=9, command=self.toggle_intensity)
+        intensity_check.grid(column=0, row=1, padx=pad, pady=pad)
+        
+        calibrate_warning = tk.Label(self.settings_menu, text="Spatial calibration needed for following:")
+        calibrate_warning.grid(column=0, row=2, padx=pad, pady=pad)
+        
+        tick_check = tk.Checkbutton(self.settings_menu, text= "Tick", width=9, command=self.toggle_tick)
+        tick_check.grid(column=0, row=3, padx=pad, pady=pad)
+        
+        axes_check = tk.Checkbutton(self.settings_menu, text= "Axes", width=9, command=self.toggle_axes)
+        axes_check.grid(column=0, row=4, padx=pad, pady=pad)
+        
+        grid_check = tk.Checkbutton(self.settings_menu, text= "Grid", width=9, command=self.toggle_grid)
+        grid_check.grid(column=0, row=5, padx=pad, pady=pad)
+        
+
+    def toggle_intensity(self):
+        self._camera_widget.show_intensity = not self._camera_widget.show_intensity
+    def toggle_grid(self):
+        self._camera_widget.show_grid = not self._camera_widget.show_grid
+    def toggle_tick(self):
+        self._camera_widget.show_tick_bar = not self._camera_widget.show_tick_bar
+    def toggle_axes(self):
+        self._camera_widget.show_tick_axes = not self._camera_widget.show_tick_axes
 
     def _cmap_window(self):
         """Popup window to set colourmaps during operation."""
@@ -182,7 +201,7 @@ class CPL_Viewer(tk.Frame):
         photo = tk.Button(text="Take Photo", command=self._take_photo, width=9)
         live = tk.Label(text="Rotator:")
         calibrate = tk.Button(text="Calibrate", command=self._calibrate_window, width=9)
-        cmap_btn = tk.Button(text="Settings", command=self.settings_window, width=9)
+        cmap_btn = tk.Button(text="Overlays", command=self.settings_window, width=9)
         label = tk.Label(text="Modes:")
         
         toggle = ("On", "Off")
@@ -245,10 +264,11 @@ class LiveViewCanvas(tk.Canvas):
         self.bind_all('<Motion>', self._get_intensity_at_cursor)
         self.bind("<ButtonPress-1>", self.add_click)
         self.clicks = []
+        self.tick_spacing_px, self.tick_dist = 0, 0
         self.show_tick_bar = False
         self.show_tick_axes = False
         self.show_grid = False
-        self.show_intensity = True
+        self.show_intensity = False
         
         # need the columnspan and row span to make alignment nice
         self.grid(column=2, row=0, columnspan=5, rowspan=5)
@@ -285,17 +305,18 @@ class LiveViewCanvas(tk.Canvas):
         self._cmap.set_cmaps(cmap_list)
     
     def draw_overlays(self):
+        calibrated = ((self.tick_dist > 0) and (self.tick_spacing_px > 0))
+        if self.show_grid and calibrated:
+            self.draw_grid()
+        if self.show_tick_axes and calibrated:
+            self.draw_tick_axes()
+        if self.show_tick_bar and calibrated:
+            self.draw_tick_bar()
+        
         if self.show_intensity:
             self._draw_intensity()
-        if self.show_grid:
-            self.draw_grid()
-        if self.show_tick_axes:
-            self.draw_tick_axes()
-        if self.show_tick_bar:
-            self.draw_tick_bar()
         crosses = [self.draw_crosses(c) for c in self.clicks]
-        
-        
+
     def _get_image(self):
         """Grab the two images (LCPL & RCPL) from their two queues, apply
         correction (if it exist) then combine the iumage data into one array
@@ -337,10 +358,14 @@ class LiveViewCanvas(tk.Canvas):
         colourmapped image in bmp form, the original image data in csv, txt and
         npy form, an image of the colorbar used and the mask data."""
         timestamp = datetime.now()
-        timestamp_string = timestamp.strftime("%d-%m-%y_%H:%M:%S_%f")
-        directory = "photos/" + timestamp_string
+        timestamp_string = timestamp.strftime("%d-%m-%y_%H_%M_%S_%f")
+        if platform == "linux" or platform == "linux2":
+            file_sep = "/"
+        else:
+            file_sep = "\\"
+        directory = getcwd() + file_sep + "photos" + file_sep + timestamp_string
         mkdir(directory)
-        file_path = directory + "/" + timestamp_string
+        file_path = directory + file_sep + timestamp_string
 
         self._img_data.save(file_path + ".bmp", format="bmp") #save photo
         self._cbar_img_pil.save(file_path + "_colorbar.bmp", format="bmp") #save colorbar
@@ -402,7 +427,7 @@ class LiveViewCanvas(tk.Canvas):
             draw_text = "dA"
         else:
             draw_text = self._mode
-        self.create_text(10, 10, anchor=tk.W, fill="Black", font="Arial", text=f"{draw_text}:{self._intensity:.4f}")
+        self.create_text(10, 10, anchor=tk.W, fill="Black", font=("Arial", 12), text=f"{draw_text}:{self._intensity:.4f}")
 
     def add_click(self, event):
         self.clicks.append((event.x, event.y))
@@ -444,7 +469,7 @@ class LiveViewCanvas(tk.Canvas):
         self.clicks = []
         tick_spacing_px, tick_spacing_mm = self.calculate_tick_spacing(360)
         dist_mm = tick_spacing_px / self.pixels_per_mm
-        self.set_tick_bar(tick_spacing_px, tick_spacing_mm)
+        self.tick_spacing_px, self.tick_dist = tick_spacing_px, tick_spacing_mm
         self.spatial_menu.destroy()
     
     def draw_line(self, offset_x=0, offset_y=360, max_px=360, orient="x",
