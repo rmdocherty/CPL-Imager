@@ -17,6 +17,7 @@ import json
 from time import sleep
 from skimage import draw
 import random
+from colourmapper import read_from_json
 
 np.random.seed(1)
 IMG_HEIGHT = 360 # can go at least as high as 1000x1000 - don't know what upper limit is!
@@ -51,9 +52,10 @@ class ImageAcquisitionThread(threading.Thread):
         """Grab corresponding (left or right) ROI config from the file, else
         use defaults."""
         try:
-            with open("config.json", "r") as config_file:
+            """with open("config.json", "r") as config_file:
                 config_json = json.load(config_file)
-                coords = config_json["roi_"+self._label]
+                coords = config_json["roi_"+self._label]"""
+            coords = read_from_json("roi_"+self._label)
             ROI = (coords[0], coords[1], coords[2], coords[3])
             print(f"Setting ROI as {ROI}")
             self._camera.roi = ROI
@@ -140,7 +142,7 @@ class CompactImageAcquisitionThread(ImageAcquisitionThread):
                 self._mode = self._control_queue.get_nowait()
             except queue.Empty:
                 pass
-            if self._mode == "Live":
+            if self._mode == "Both":
                 if self._imaging_LCPl is True:
                     self._rotate_mount(rotator.HORIZONTAL) #motor is horizontal by default and offset by a few degrees. Also 45 -> 90 for some reason so 52 is approx. vertical
                     iq = self._image_queue
@@ -158,16 +160,27 @@ class CompactImageAcquisitionThread(ImageAcquisitionThread):
                 except Exception as error:
                     print("Encountered error: {error}, image acquisition will stop.".format(error=error))
                     break
-            elif self._mode == "Free":
+            elif self._mode == "LCPL" or self._mode == "RCPL":
+                if self._mode == "LCPL":
+                    self._rotate_mount(rotator.HORIZONTAL) #motor is horizontal by default and offset by a few degrees. Also 45 -> 90 for some reason so 52 is approx. vertical
+                    iq_main = self._image_queue
+                    iq_null = self._image_queue_2
+                else:
+                    self._rotate_mount(rotator.VERTICAL) #motor is horizontal by default and offset by a few degrees. Also 45 -> 90 for some reason so 52 is approx. vertical
+                    iq_main = self._image_queue_2
+                    iq_null = self._image_queue
                 try:
                     frame = self._camera.get_pending_frame_or_null()
                     if frame is not None:
                         np_image = self._get_image(frame)
-                        self._image_queue.put_nowait(np_image)
-                        self._image_queue_2.put_nowait(np_image)
+                        iq_main.put_nowait(np_image)
+                        null = np.zeros_like(np_image)
+                        iq_null.put_nowait(null)
                 except queue.Full:
                     pass
-            else: #maybe put a new mode in here - free cam with no rotation and same image on both queues
+            elif self._mode == "Pause":
+                pass
+            else:
                 pass
         print("Image acquisition has stopped")
         self._camera.disarm()

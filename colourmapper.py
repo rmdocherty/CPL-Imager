@@ -12,6 +12,27 @@ import numpy as np # maybe can just import hstack by itself later
 import matplotlib.pyplot as plt
 import json
 
+
+def get_json_obj():
+    with open("config.json", "r") as config_file:
+        config_json = json.load(config_file)
+    return config_json
+
+def read_from_json(field):
+    config_json = get_json_obj()
+    try:
+        out = config_json[field]
+    except:
+        raise Exception("Wrong key for config JSON!")
+    return out
+
+def write_to_json(field, value):
+    config_json = get_json_obj()
+    config_json[field] = value
+    with open("config.json", "w") as config_file:
+        json.dump(config_json, config_file)
+    return 0
+
 class ColourMapper():
     """
     ColourMapper.
@@ -49,10 +70,11 @@ class ColourMapper():
             Dictionary mapping mode strings to chosen matplotlib colourmap
             strings.
         """
-        cmap_dict = {}
+        cmap_dict = read_from_json("cmaps")
+        """
         with open("config.json", "r") as config_file:
             config_json = json.load(config_file)
-            cmap_dict = config_json["cmaps"]
+            cmap_dict = config_json["cmaps"]"""
         return cmap_dict
 
     def colour_map(self, img1, img2, debug=False):
