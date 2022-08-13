@@ -6,12 +6,19 @@ Created on Thu Jul 29 11:35:13 2021
 @author: ronan
 """
 
-from matplotlib import cm
+from matplotlib import cm, colors
 from PIL import Image
 import numpy as np # maybe can just import hstack by itself later
 import matplotlib.pyplot as plt
 import json
 
+
+def dA(LCPL, RCPL):
+    div = np.divide(RCPL, LCPL, out=np.ones_like(RCPL), where=LCPL*RCPL!=0)
+    return np.log10(div)
+
+def CD(dA): #in mdeg
+    return np.arctan(np.tanh( (np.log(10)*dA) /4 )) * (180*10**3) / np.pi
 
 def get_json_obj():
     with open("config.json", "r") as config_file:
@@ -71,10 +78,6 @@ class ColourMapper():
             strings.
         """
         cmap_dict = read_from_json("cmaps")
-        """
-        with open("config.json", "r") as config_file:
-            config_json = json.load(config_file)
-            cmap_dict = config_json["cmaps"]"""
         return cmap_dict
 
     def colour_map(self, img1, img2, debug=False):
@@ -100,46 +103,27 @@ class ColourMapper():
             A PIL Image Object
 
         """
-        if self._mode == "Raw":
-            cmap1, cmap2 = self._cmaps["Raw"]
-            if img1 is not None and img2 is not None: #use this case 1st as most common!
-                cmapped_img1 = self._single_cmap(img1, cmap1)
-                cmapped_img2 = self._single_cmap(img2, cmap2)
-                mapped = np.hstack((cmapped_img1, cmapped_img2)) #put images 'side-by-side' NB - will this work if diff sizes??
-            elif img1 is not None and img2 is None: #single image modes
-                mapped = self._single_cmap(img1, cmap1)
-            elif img1 is None and img2 is not None:
-                mapped = self._single_cmap(img2, cmap2)
-            else:
-                raise Exception("Must supply at least 1 image!")
-
-        elif self._mode == "CD":
-            dA = (img1 - img2)
-            cmap = self._cmaps["g_em"]
-            theta_mdeg = np.arctan( np.tanh( (np.ln(10)*dA)/4 )) * (180*10**3) / np.pi
-            mapped = self._single_cmap(theta_mdeg, cmap)
-
-        elif self._mode == "g_em":
-            cmap = self._cmaps["g_em"]
-            g_em = (img1 - img2) #/ (img1 + img2) #from equation, ignore factor of 2
-            # g_em = g_em + 1
-            g_em = (g_em + 1) / 2 #rescale from -1,+1 to 0,+1 for cmapping
-            mapped = self._single_cmap(g_em, cmap)
-
-        elif self._mode == "DOCP":
-            cmap = self._cmaps["DOCP"]
-            DOCP = (img1 + img2) / 2
-            mapped = self._single_cmap(DOCP, cmap)
-
-        else:
-            raise Exception("Invalid mode supplied, check cmap_config file")
+        
+        cmap1, cmap2 = self._cmaps["Raw"]
+        cmap3, cmap4 = self._cmaps["DOCP"], self._cmaps["g_em"]
+        cmapped_img1 = self._single_cmap(img1, cmap1)
+        cmapped_img2 = self._single_cmap(img2, cmap2)
+        
+        delta_A = dA(img1, img2) # np.log10(img1/img2)#(img1 - img2)
+        cmapped_img3 = self._single_cmap(delta_A, cmap3, symm=True)
+        theta_mdeg = CD(delta_A) # np.arctan(np.tanh( (np.log(10)*dA) /4 )) * (180*10**3) / np.pi
+        cmapped_img4 = self._single_cmap(theta_mdeg, cmap4, symm=True)
+        
+        top = np.hstack((cmapped_img1, cmapped_img2))
+        bot = np.hstack((cmapped_img3, cmapped_img4))
+        mapped = np.vstack((top, bot))
 
         out = Image.fromarray(mapped) #convert to PIL Image
         if debug is True:
             out.show() #see what's going on -get rid of later
         return out
 
-    def _single_cmap(self, img, cmap_string):
+    def _single_cmap(self, img, cmap_string, symm=False):
         """
         single_cmap.
 
@@ -158,10 +142,15 @@ class ColourMapper():
             Colour mapped PIL image for use in the tkinter widget.
         """
         cmap = cm.get_cmap(cmap_string) #grab cmap object from string
-        out_im = cmap(img, bytes=True) #bytes=True converts array into uint8 for fromarray to use
+        if symm == True:
+            vmax = max(np.abs(np.amax(img)), np.abs(np.amin(img)))
+            norm = colors.Normalize(vmin=-vmax,vmax=vmax)
+            out_im = cmap(norm(img), bytes=True)
+        else:
+            out_im = cmap(img, bytes=True)
         return out_im
 
-    def gen_colourbar(self):
+    def gen_colourbar(self, limits=[]):
         """
         gen_colourbar.
 
@@ -175,25 +164,19 @@ class ColourMapper():
             Colourbar(s) corresponding to the cmap mode.
 
         """
-        if self._mode == "Raw":
-            cmap1, cmap2 = self._cmaps["Raw"]
-            limits = np.array([[0, 1]])
-            cbar1, cbar2 = self._single_colourbar(limits, cmap1), self._single_colourbar(limits, cmap2)
-            out = Image.new('RGBA', (cbar1.width + cbar2.width, cbar1.height))
-            out.paste(cbar1, (0, 0))
-            out.paste(cbar2, (cbar1.width, 0))
-        elif self._mode == "DOCP":
-            cmap1 = self._cmaps["DOCP"]
-            limits = np.array([[0, 1]])
-            out = self._single_colourbar(limits, cmap1)
-        elif self._mode == "g_em":
-            cmap1 = self._cmaps["g_em"]
-            limits = np.array([[-1, 1]]) #was -2, +2
-            out = self._single_colourbar(limits, cmap1)
-        elif self._mode == "CD":
-            cmap1 = self._cmaps["g_em"]
-            limits = np.array([[-1, 1]]) #was -2, +2
-            out = self._single_colourbar(limits, cmap1)
+
+        cmap1, cmap2 = self._cmaps["Raw"]
+        cmap3, cmap4 = self._cmaps["DOCP"], self._cmaps["g_em"]
+        raw_lims = np.array([[0, 1]])
+        
+        cbar1, cbar2 = self._single_colourbar(raw_lims, cmap1), self._single_colourbar(raw_lims, cmap2)
+        cbar3, cbar4 = self._single_colourbar(limits[0], cmap3), self._single_colourbar(limits[1], cmap4)
+        out = Image.new('RGBA', (cbar1.width + cbar2.width, cbar1.height + cbar2.height))
+        out.paste(cbar1, (0, 0))
+        out.paste(cbar2, (cbar1.width, 0))
+        out.paste(cbar3, (0, cbar1.height))
+        out.paste(cbar4, (cbar1.width, cbar1.height))
+        
         return out
 
     def _single_colourbar(self, limits, cmap_string):
@@ -222,7 +205,7 @@ class ColourMapper():
         """
         LEFT = 0.05
         BOTTOM = 0.2
-        WIDTH = 0.08
+        WIDTH = 0.1#0.08
         HEIGHT = 0.6
         cmap = cm.get_cmap(cmap_string)
 
@@ -234,12 +217,12 @@ class ColourMapper():
 
         canvas = fig.canvas
         can_dims = canvas.get_width_height()
-        plt.savefig("colorbar.png", transparent=True)
+        plt.savefig("photos/colorbar.png", transparent=True)
         plt.close()
 
         offset = (int(can_dims[0] * LEFT) - 10, int(can_dims[1] * BOTTOM) - 30)
         bar_dims = (int(can_dims[0] * WIDTH) * 2.2, int(can_dims[1] * HEIGHT))
 
-        img = Image.open("colorbar.png")
+        img = Image.open("photos/colorbar.png")
         img = img.crop((offset[0], offset[1], offset[0] + bar_dims[0], offset[1] + bar_dims[1] + 40))
         return img

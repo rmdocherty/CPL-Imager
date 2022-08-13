@@ -7,7 +7,7 @@ Created on Fri Jul 30 11:52:28 2021
 """
 import tkinter as tk
 import csv
-from colourmapper import ColourMapper, json, read_from_json, write_to_json
+from colourmapper import ColourMapper, json, read_from_json, write_to_json, dA, CD
 from PIL import ImageTk
 import numpy as np
 import queue
@@ -21,6 +21,18 @@ def clearQueue(queue):
         queue.get()
     return 0
 
+class Traffic_light(tk.Canvas):
+    def __init__(self, parent):
+        tk.Canvas.__init__(self, parent, width=30, height=30)
+        self.on()
+    def on(self):
+        self.delete('all')
+        self.create_circle(12, 19, 10, fill="#2cfc03", outline="#7bff61", width=1)
+    def pause(self):
+        self.delete('all')
+        self.create_circle(12, 19, 10, fill="#ffa733", outline="#fcba62", width=1)
+    def create_circle(self, x, y, r, **kwargs):
+        return self.create_oval(x-r, y-r, x+r, y+r, **kwargs)
 
 class CPL_Viewer(tk.Frame):
     """
@@ -41,6 +53,7 @@ class CPL_Viewer(tk.Frame):
 
     def set_camera_widget(self, camera_widget_object):
         self._camera_widget = camera_widget_object
+        #self._camera_widget._mode = "Both"
         self._createWidgets()
 
     def set_control_queue(self, cq):
@@ -59,18 +72,25 @@ class CPL_Viewer(tk.Frame):
         toggle_default.set("Both")
         toggle_dropdown = tk.OptionMenu(self.master, toggle_default, toggle[0], *toggle[1:], command=self._toggle_live)
         
+        camera = tk.Label(text="Camera:")
+        self.camera_icon = Traffic_light(self.master)
+        rotator = tk.Label(master=self.master, text="Rotator:")
+        self.rotator_icon = Traffic_light(self.master)
+        
         options = ("raw", "DOCP", "dA")
         default = tk.StringVar(self.master)
         default.set("raw")
         dropdown = tk.OptionMenu(self.master, default, options[0], *options[1:], command=self.switch)
         
-        btns = [photo, live, label, calibrate, cmap_btn] #raw_btn, DOCP_btn, g_em_btn
-        pad = 1
+        btns = [photo, live, camera, rotator, calibrate, cmap_btn] #raw_btn, DOCP_btn, g_em_btn
+        pad = 3 #1
         for index, b in enumerate(btns):
-            colspan = 2 if index in [0, 3, 4] else 1
+            colspan = 2 if index in [0, 4, 5] else 1
             b.grid(column=0, row=index, ipadx=pad, ipady=pad, padx=pad, pady=pad, columnspan=colspan)
-        dropdown.grid(column=1, row=2,  sticky=tk.W, padx=5, pady=5)
-        toggle_dropdown.grid(column=1, row=1,  sticky=tk.W, padx=5, pady=5)
+        #dropdown.grid(column=1, row=2,  sticky=tk.W, padx=5, pady=5)
+        toggle_dropdown.grid(column=1, row=1,  sticky=tk.W, padx=3, pady=3, ipadx=3, ipady=3)
+        self.camera_icon.grid(column=1, row=2, ipadx=pad, padx=pad)
+        self.rotator_icon.grid(column=1, row=3, ipadx=pad, padx=pad)
     def _switch_to_raw(self):
         self._camera_widget.set_cmap_mode("Raw")
     def _switch_to_DOCP(self):
@@ -94,7 +114,15 @@ class CPL_Viewer(tk.Frame):
     def _toggle_live(self, mode):
         """Pause the live view - used for compact setup to avoid overusing the
         rotation motor."""
-        print(mode)
+        if mode == "LCPL" or mode == "RCPL":
+            self.rotator_icon.pause()
+            self.camera_icon.on()
+        elif mode == "Pause":
+            self.rotator_icon.pause()
+            self.camera_icon.pause()
+        elif mode == "Both":
+            self.rotator_icon.on()
+            self.camera_icon.on()
         clearQueue(self._CQ)
         self._CQ.put(mode)
 
@@ -109,20 +137,25 @@ class CPL_Viewer(tk.Frame):
         
         intensity_check = tk.Checkbutton(self.settings_menu, text="Intensity", width=9, command=self.toggle_intensity)
         intensity_check.grid(column=0, row=1, padx=pad, pady=pad)
+    
+        labels_check = tk.Checkbutton(self.settings_menu, text="Label", width=9, command=self.toggle_labels)
+        labels_check.grid(column=0, row=2, padx=pad, pady=pad)
         
         calibrate_warning = tk.Label(self.settings_menu, text="Spatial calibration needed for following:")
-        calibrate_warning.grid(column=0, row=2, padx=pad, pady=pad)
+        calibrate_warning.grid(column=0, row=3, padx=pad, pady=pad)
         
         tick_check = tk.Checkbutton(self.settings_menu, text= "Tick", width=9, command=self.toggle_tick)
-        tick_check.grid(column=0, row=3, padx=pad, pady=pad)
+        tick_check.grid(column=0, row=4, padx=pad, pady=pad)
         
         axes_check = tk.Checkbutton(self.settings_menu, text= "Axes", width=9, command=self.toggle_axes)
-        axes_check.grid(column=0, row=4, padx=pad, pady=pad)
+        axes_check.grid(column=0, row=5, padx=pad, pady=pad)
         
         grid_check = tk.Checkbutton(self.settings_menu, text= "Grid", width=9, command=self.toggle_grid)
-        grid_check.grid(column=0, row=5, padx=pad, pady=pad)
+        grid_check.grid(column=0, row=6, padx=pad, pady=pad)
     def toggle_intensity(self):
         self._camera_widget.show_intensity = not self._camera_widget.show_intensity
+    def toggle_labels(self):
+        self._camera_widget.show_labels = not self._camera_widget.show_labels
     def toggle_grid(self):
         self._camera_widget.show_grid = not self._camera_widget.show_grid
     def toggle_tick(self):
@@ -182,7 +215,7 @@ class CPL_Viewer(tk.Frame):
         self._calibrate_menu.destroy()
         self._camera_widget.roi_calibrate()
     def reset_roi(self):
-        ROI = (0, 0, 800, 800)
+        ROI = (0, 0, 1024, 1024)
         write_to_json("roi_left", ROI)
         write_to_json("roi_right", ROI)
         try:
@@ -274,22 +307,32 @@ class LiveViewCanvas(tk.Canvas):
         self.show_tick_axes = False
         self.show_grid = False
         self.show_intensity = False
+        self.show_labels = False
         
         # need the columnspan and row span to make alignment nice
         self.grid(column=2, row=0, columnspan=5, rowspan=5)
-
+        
+        self.cbar_initialised = False
         self._cbar_canv = tk.Canvas(parent)#parent
         self._cbar_canv.grid(column=7, row=0, rowspan=5, columnspan=1, padx=16, pady=16)
+        self._mode = "Raw"
 
-        self.set_cmap_mode("Raw")
-        self._sizes = {"Raw": (720, 360), "DOCP": (360, 360), "g_em": (360, 360), "CD": (360, 360)}
+        
+        self._sizes = {"Raw": (720, 720), "DOCP": (360, 360), "g_em": (360, 360), "CD": (360, 360)}
 
         self._get_image()
 
     def set_masks(self, LCPL, RCPL):
         self._LCPL_mask = LCPL
         self._RCPL_mask = RCPL
-
+    def initialise_cbar(self, img1, img2):
+        delta_A = dA(img1, img2) # dA = np.log10(img1/img2) #img1 - img2#np.log10(img2/img1)
+        theta_mdeg = CD(delta_A)#theta_mdeg = np.arctan( np.tanh( (np.log(10)*dA)/4 )) * (180*10**3) / np.pi
+        vmax_dA = max(np.abs(np.amax(delta_A)), np.abs(np.amin(delta_A)))
+        vmax_theta_mdeg = max(np.abs(np.amax(theta_mdeg)), np.abs(np.amin(theta_mdeg)))
+        cbar_img = self._cmap.gen_colourbar(limits=[np.array([[-vmax_dA, vmax_dA]]), np.array([[-vmax_theta_mdeg, vmax_theta_mdeg]])])
+        self._pack_cbar_img(cbar_img)
+        self.cbar_initialised = True
     def _pack_cbar_img(self, cbar_img):
         """Given PIL image of colorbar, add it to tkinter canvas and pack
         canavs to RHS of image. The TkPhotoImage is saved to an attribute as
@@ -302,8 +345,7 @@ class LiveViewCanvas(tk.Canvas):
         """Setter for the Cmap mode."""
         self._mode = mode
         self._cmap.set_mode(mode)
-        cbar_img = self._cmap.gen_colourbar()
-        self._pack_cbar_img(cbar_img)
+        #print(self._img_data)
     def set_cmaps(self, cmap_list):
         self._cmap.set_cmaps(cmap_list)
     
@@ -338,7 +380,9 @@ class LiveViewCanvas(tk.Canvas):
             self.delete('all') #need to garbage collect old canvas objects (not deleted automatically)
             self.create_image(0, 0, image=self._image, anchor='nw')
             self.draw_overlays()
-                
+            if self.cbar_initialised is False:
+                self.initialise_cbar(image1, image2)
+            
         except queue.Empty:
             pass
         self.after(20, self._get_image) #repeat this function every 20ms
@@ -399,14 +443,18 @@ class LiveViewCanvas(tk.Canvas):
             self._draw_intensity()
         if self.roi_calibrate_on and len(self.clicks) == 1:
             self.draw_rect()
+        if self.show_labels:
+            self.draw_labels()
         crosses = [self.draw_crosses(c) for c in self.clicks]
     def _draw_intensity(self):
         """Draw the current intensity to the screen."""
-        if self._mode == "g_em":
-            draw_text = "dA"
-        else:
-            draw_text = self._mode
-        self.create_text(10, 10, anchor=tk.W, fill="Black", font=("Arial", 12), text=f"{draw_text}:{self._intensity:.4f}")
+        x, y = self.mouse_pos
+        quad_x, quad_y = x // 360, y // 360
+        names = [["LCPL", "RCPL"], ["dA", "CD"]]
+        positions = [[(260, 350), (620, 350)], [(270, 710), (620, 710)]]
+        mode = names[quad_y][quad_x]
+        pos = positions[quad_y][quad_x]
+        self.create_text(pos[0], pos[1], anchor=tk.W, fill="Black", font=("Arial", 12), text=f"{mode}:{self._intensity:.4f}")
     def draw_crosses(self, c):
         self.create_text(c[0]-3, c[1], anchor=tk.W, font=("Arial", 8), text="X", fill="Orange")
     def draw_line(self, offset_x=0, offset_y=360, max_px=360, orient="x",
@@ -437,6 +485,11 @@ class LiveViewCanvas(tk.Canvas):
         click = self.clicks[0]
         mouse = self.mouse
         self.create_rectangle(click[0], click[1], mouse[0], mouse[1], outline="Orange")
+    def draw_labels(self):
+        self.create_text(10, 10, width=0.1, anchor=tk.W, fill="Black", font=("Arial", 12), text="LCPL")
+        self.create_text(370, 10, width=0.1, anchor=tk.W, fill="Black", font=("Arial", 12), text="RCPL")
+        self.create_text(10, 370, width=0.1, anchor=tk.W, fill="Black", font=("Arial", 12), text="dA")
+        self.create_text(370, 370, width=0.1, anchor=tk.W, fill="Black", font=("Arial", 12), text="CD (mdeg)")
     
     def add_click(self, event):
         if self.spatial_calibrate_on or self.roi_calibrate_on:
@@ -460,19 +513,17 @@ class LiveViewCanvas(tk.Canvas):
             scale_factor_y = arr_y / self._sizes[self._mode][1]
             LCPL = self._np_array[:, :arr_x]
             RCPL = self._np_array[:, arr_x:]
+            delta_A = dA(LCPL, RCPL)#dA = np.log10(LCPL/RCPL) #LCPL - RCPL#np.log10(RCPL/LCPL)
+            theta_mdeg = CD(delta_A) #np.arctan(np.tanh( (np.log(10)*dA) /4 )) * (180*10**3) / np.pi
+            bot = np.hstack((delta_A, theta_mdeg))
+            data = np.vstack((data, bot))
 
-            if self._mode == "Raw":
-                scale_factor_x *= 2
-                x_prime, y_prime = int(x * scale_factor_x), int(y * scale_factor_y)
-                self._intensity = data[y_prime, x_prime]
-            elif self._mode == "DOCP":
-                x_prime, y_prime = int(x * scale_factor_x), int(y * scale_factor_y)
-                DOCP = (LCPL + RCPL) / 2
-                self._intensity = DOCP[y_prime, x_prime]
-            elif self._mode == "g_em":
-                g_em = (LCPL - RCPL)#(2 * (LCPL - RCPL)) / (LCPL + RCPL)
-                x_prime, y_prime = int(x * scale_factor_x), int(y * scale_factor_y)
-                self._intensity = g_em[y_prime, x_prime]
+            scale_factor_x *= 2
+            scale_factor_y *= 2
+            x_prime, y_prime = int(x * scale_factor_x), int(y * scale_factor_y)
+            self._intensity = data[y_prime, x_prime]
+            self.mouse_pos = (x, y)
+
         except IndexError: #if out of bounds then pass
             x, y = 0, 0
     def track_mouse(self, event):

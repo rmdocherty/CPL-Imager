@@ -39,6 +39,10 @@ class CPL_Imager():
         self._GUI = CPL_Viewer(master=self._root)
         self._root.title("CPL Imager")
         self._root.geometry("1400x800")
+        col_count, row_count = self._root.grid_size()
+
+        for row in range(row_count):
+            self._root.grid_rowconfigure(row, maxsize=10)
 
     def _gen_image_acquisition_threads(self, cam1, cam2):
         return ImageAcquisitionThread(cam1, label="left"), ImageAcquisitionThread(cam2, label="right")
@@ -158,6 +162,7 @@ class Compact_CPL_Imager(CPL_Imager_One_Camera):
     12) Add indicator if camera and rotator are on or paused (i.e Both->Both on, LCPL/RCPL-> camera on
         but rotator paused, Paused->Both paused) to menu. Also add toggable overlay that says which pane
         is which in top right hand corner & move intensity to bottom left.
+    13) MAKE SURE YOUR DEFININTION OF WHICH IS IMAGE 1 AND WHICH IS IMAGE 2 IS GOOD THEN ADJUST DA VALUES ACCORDINGLY
     """
 
     def run(self):

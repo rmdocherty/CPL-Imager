@@ -120,7 +120,7 @@ class CompactImageAcquisitionThread(ImageAcquisitionThread):
         else:
             port = "COM3"
         self._rotator = rotator.Rotator(port) #was /dev/ttyUSB0
-        self._mode = "Live"
+        self._mode = "Both"#"Live"
         self._control_queue = queue.Queue(maxsize=2)
 
     def get_output_queue_2(self):
@@ -246,12 +246,14 @@ class MockCamera(threading.Thread):
         while not self._stop_event.is_set():
             try:
                 if self._label == "left":
-                    val = 0.5#0.5
-                    offset_x = 10
+                    val = 0.4
+                    offset_x = 12
+                    dx = 0.01
                 else:
-                    val = 0.9 #have a +0.3 differential 
+                    val = 0.8 #have a +0.3 differential 
                     offset_x = 0
-                LCPL = np.zeros((IMG_HEIGHT, IMG_WIDTH))
+                    dx = 0.01
+                LCPL = np.zeros((IMG_HEIGHT, IMG_WIDTH)) + dx
                 rr, cc = draw.disk((IMG_HEIGHT // 2, offset_x + IMG_WIDTH // 2), 60)
                 LCPL[rr, cc] = val
                 if self._label == "right":
