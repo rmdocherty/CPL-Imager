@@ -14,7 +14,10 @@ import queue
 from datetime import datetime
 from os import mkdir, path, getcwd
 from sys import platform
-
+if platform == "linux" or platform == "linux2":
+    file_sep = "/"
+else:
+    file_sep = "\\"
 
 def clearQueue(queue):
     while not queue.empty():
@@ -129,6 +132,7 @@ class CPL_Viewer(tk.Frame):
     def settings_window(self):
         pad = 3
         self.settings_menu = tk.Toplevel()
+        self.settings_menu.iconbitmap(f'photos{file_sep}CPL.ico')
         #self.settings_menu.geometry("240x220")
         self.settings_menu.title("Overlays")
         
@@ -166,6 +170,7 @@ class CPL_Viewer(tk.Frame):
     def _cmap_window(self):
         """Popup window to set colourmaps during operation."""
         self._cmap_menu = tk.Toplevel()
+        self._cmap_menu.iconbitmap(f'photos{file_sep}CPL.ico')
         self._cmap_menu.title("Colour map selector")
         LCPL = tk.Text(self._cmap_menu, height=2, width=30)
         LCPL_text = tk.Label(self._cmap_menu, text="LCPL:")
@@ -198,6 +203,7 @@ class CPL_Viewer(tk.Frame):
     def _calibrate_window(self):
         """Popup window to generate multiplicative correction map for cameras."""
         self._calibrate_menu = tk.Toplevel()
+        self._calibrate_menu.iconbitmap(f'photos{file_sep}CPL.ico')
         #self._calibrate_menu.geometry("220x150")
         self._calibrate_menu.title("Calibration")
 
@@ -205,6 +211,7 @@ class CPL_Viewer(tk.Frame):
         spatial_calibrate = tk.Button(self._calibrate_menu, text="Spatial calibration", command=self.start_spatial_calibrate, width=14).grid(column=0, row=2, padx=3, pady=2)
         roi_reset = tk.Button(self._calibrate_menu, text="Reset ROI", command=self.reset_roi, width=14).grid(column=0, row=3, padx=3, pady=2)
         roi_calibrate = tk.Button(self._calibrate_menu, text="ROI calibration", command=self.start_roi_calibrate, width=14).grid(column=0, row=4, padx=3, pady=2)
+        intensity_calibrate =  tk.Button(self._calibrate_menu, text="Intensity calibration", command=self.start_intensity_calibration, width=14).grid(column=0, row=4, padx=3, pady=2)
     def start_spatial_calibrate(self):
         self._camera_widget.roi_calibrate_on = False
         self._camera_widget.spatial_calibrate_on = True
@@ -214,6 +221,10 @@ class CPL_Viewer(tk.Frame):
         self._camera_widget.spatial_calibrate_on = False
         self._calibrate_menu.destroy()
         self._camera_widget.roi_calibrate()
+    def start_intensity_calibration(self):
+        self._calibrate_menu.destroy()
+        self._camera_widget.intensity_calibrate()
+        
     def reset_roi(self):
         ROI = (0, 0, 1024, 1024)
         write_to_json("roi_left", ROI)
@@ -228,6 +239,7 @@ class CPL_Viewer(tk.Frame):
     
     def rps_window(self):
         self.rps_menu = tk.Toplevel()
+        self.rps_menu.iconbitmap(f'photos{file_sep}CPL.ico')
         self.rps_menu.title("RPS Calibration")
         #self.rps_menu.geometry("220x100")
 
@@ -297,6 +309,7 @@ class LiveViewCanvas(tk.Canvas):
         
         self.roi_calibrate_on = False
         self.spatial_calibrate_on = False
+        self.intensity_calibrate_on = False
         self.bind("<ButtonPress-1>", self.add_click)
         self.clicks = []
 
@@ -445,6 +458,10 @@ class LiveViewCanvas(tk.Canvas):
             self.draw_rect()
         if self.show_labels:
             self.draw_labels()
+        if self.intensity_calibrate_on:
+            LCPL_i, RCPL_i = self.check_saturation()
+            self.LCPL_live_intensity_text['text'] = f"{LCPL_i:.2f}"#(str(LCPL_i))
+            self.RCPL_live_intensity_text['text'] = f"{RCPL_i:.2f}"#(str(RCPL_i))
         crosses = [self.draw_crosses(c) for c in self.clicks]
     def _draw_intensity(self):
         """Draw the current intensity to the screen."""
@@ -555,6 +572,7 @@ class LiveViewCanvas(tk.Canvas):
         self.click_dist = np.sqrt(dx**2 + dy**2)
         
         self.spatial_menu = tk.Toplevel()
+        self.spatial_menu.iconbitmap(f'photos{file_sep}CPL.ico')
         self.spatial_menu.title("Spatial Calibration")
         #self.spatial_menu.geometry("220x100")
         enter_dist = tk.Text(self.spatial_menu, height=1, width=8)
@@ -596,5 +614,37 @@ class LiveViewCanvas(tk.Canvas):
         self.spatial_calibrate_on = False
         self.spatial_menu.destroy()
         tk.messagebox.showinfo("Spatial complete", f"Pixels per mm: {self.pixels_per_mm:.4f}.\nUse Overlay menu to display ticks, axes and grids")
-        
     
+    def intensity_calibrate(self):
+        self.intensity_calibration = tk.Toplevel()
+        self.intensity_calibration.iconbitmap(f'photos{file_sep}CPL.ico')
+        self.intensity_calibrate_on = True
+        self.intensity_calibration.title("Intensity Calibration")
+        LCPL_intensity_text = tk.Label(self.intensity_calibration, text="LCPL % saturation:").grid(column=0, row=0)
+        RCPL_intensity_text = tk.Label(self.intensity_calibration, text="RCPL % saturation:").grid(column=0, row=1)
+        self.LCPL_live_intensity_text = tk.Label(self.intensity_calibration, text="0")
+        self.RCPL_live_intensity_text = tk.Label(self.intensity_calibration, text="0")
+        self.LCPL_live_intensity_text.grid(column=1, row=0)
+        self.RCPL_live_intensity_text.grid(column=1, row=1)
+        finish_intensity = tk.Button(self.intensity_calibration, text="Finish", command=self.finish_intensity).grid(column=1, row=3)
+    def check_saturation(self):
+        data = self._np_array
+        arr_x, arr_y = data.shape[1] // 2, data.shape[0]
+        scale_factor_x = arr_x / self._sizes[self._mode][0]
+        scale_factor_y = arr_y / self._sizes[self._mode][1]
+        LCPL = self._np_array[:, :arr_x]
+        RCPL = self._np_array[:, arr_x:]
+        return_percents = []
+        for data in [LCPL, RCPL]:
+            non_zero = np.where(data > 0.08)[0] #region where intensity isn't zero
+            saturated = np.where(data >= 1)[0] #regions where pixel value is 1
+            data_length = data.shape[0] * data.shape[1]
+            try:
+                saturation_percent = 100 * len(saturated) / len(non_zero)
+            except ZeroDivisionError:
+                saturation_percent = 0
+            return_percents.append(saturation_percent)
+        return return_percents
+    def finish_intensity(self):
+        self.intensity_calibrate_on = False
+        self.intensity_calibration.destroy()

@@ -250,7 +250,7 @@ class MockCamera(threading.Thread):
                     offset_x = 12
                     dx = 0.01
                 else:
-                    val = 0.8 #have a +0.3 differential 
+                    val = 1 #0.8 #have a +0.3 differential 
                     offset_x = 0
                     dx = 0.01
                 LCPL = np.zeros((IMG_HEIGHT, IMG_WIDTH)) + dx
