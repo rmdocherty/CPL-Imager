@@ -211,7 +211,7 @@ class CPL_Viewer(tk.Frame):
         spatial_calibrate = tk.Button(self._calibrate_menu, text="Spatial calibration", command=self.start_spatial_calibrate, width=14).grid(column=0, row=2, padx=3, pady=2)
         roi_reset = tk.Button(self._calibrate_menu, text="Reset ROI", command=self.reset_roi, width=14).grid(column=0, row=3, padx=3, pady=2)
         roi_calibrate = tk.Button(self._calibrate_menu, text="ROI calibration", command=self.start_roi_calibrate, width=14).grid(column=0, row=4, padx=3, pady=2)
-        intensity_calibrate =  tk.Button(self._calibrate_menu, text="Intensity calibration", command=self.start_intensity_calibration, width=14).grid(column=0, row=4, padx=3, pady=2)
+        intensity_calibrate =  tk.Button(self._calibrate_menu, text="Intensity calibration", command=self.start_intensity_calibration, width=14).grid(column=0, row=5, padx=3, pady=2)
     def start_spatial_calibrate(self):
         self._camera_widget.roi_calibrate_on = False
         self._camera_widget.spatial_calibrate_on = True
@@ -487,17 +487,23 @@ class LiveViewCanvas(tk.Canvas):
             self.create_line(x1, y1, x2, y2, fill=color)
             i += 1
     def draw_tick_axes(self):
-        self.draw_line(orient="x")
-        self.draw_line(orient="y")
+        positions = [(0, 360), (0, 720), (360, 360), (360, 720)]
+        for p in positions:
+            self.draw_line(orient="x", offset_x=p[0], offset_y=p[1])
+            self.draw_line(orient="y", offset_x=p[0], offset_y=p[1])
     def draw_grid(self):
-        self.draw_line(orient="x", color="Gray", size=360, text=False)
-        self.draw_line(orient="y", color="Gray", size=360, text=False)
+        positions = [(0, 360), (0, 720), (360, 360), (360, 720)]
+        for p in positions:
+            self.draw_line(orient="x", color="Gray", size=360, text=False, offset_x=p[0], offset_y=p[1])
+            self.draw_line(orient="y", color="Gray", size=360, text=False, offset_x=p[0], offset_y=p[1])
     def draw_tick_bar(self):
-        x1, y1, x2, y2 = 10, 320, 10 + self.tick_spacing_px, 320
-        self.create_line(x1, y1, x2, y2)
-        self.create_line(x1, y1 + 4, x1, y1-4)
-        self.create_line(x2, y1 + 4, x2, y1-4)
-        self.create_text((x2 - x1) / 3, y1 + 14, width=0.1, anchor=tk.W, fill="Black", font=("Arial", 10), text=f"{self.tick_dist:.3f}mm")
+        positions = [(10, 320), (10, 680), (370, 320), (370, 680)]
+        for p in positions:
+            x1, y1, x2, y2 = p[0], p[1], p[0] + self.tick_spacing_px, p[1] #10, 320, 10 + self.tick_spacing_px, 320
+            self.create_line(x1, y1, x2, y2)
+            self.create_line(x1, y1 + 4, x1, y1-4)
+            self.create_line(x2, y1 + 4, x2, y1-4)
+            self.create_text(x1 + ((x2 - x1) / 5), y1 + 14, width=0.1, anchor=tk.W, fill="Black", font=("Arial", 10), text=f"{self.tick_dist:.3f}mm")
     def draw_rect(self):
         click = self.clicks[0]
         mouse = self.mouse
