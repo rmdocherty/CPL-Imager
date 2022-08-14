@@ -212,6 +212,8 @@ class CPL_Viewer(tk.Frame):
         roi_reset = tk.Button(self._calibrate_menu, text="Reset ROI", command=self.reset_roi, width=14).grid(column=0, row=3, padx=3, pady=2)
         roi_calibrate = tk.Button(self._calibrate_menu, text="ROI calibration", command=self.start_roi_calibrate, width=14).grid(column=0, row=4, padx=3, pady=2)
         intensity_calibrate =  tk.Button(self._calibrate_menu, text="Intensity calibration", command=self.start_intensity_calibration, width=14).grid(column=0, row=5, padx=3, pady=2)
+        threshold_calibrate =  tk.Button(self._calibrate_menu, text="Set threshold", command=self.threshold_window, width=14).grid(column=0, row=6, padx=3, pady=2)
+        dummy = tk.Label(self._calibrate_menu, text="                                                                        ").grid(column=0, row=7, padx=3, pady=2)
     def start_spatial_calibrate(self):
         self._camera_widget.roi_calibrate_on = False
         self._camera_widget.spatial_calibrate_on = True
@@ -273,7 +275,21 @@ class CPL_Viewer(tk.Frame):
     def finish_rps(self):
         self._gen_correction()
         self.rps_menu.destroy()
-
+    
+    def threshold_window(self):
+        self.threshold_menu = tk.Toplevel()
+        self.threshold_menu.iconbitmap(f'photos{file_sep}CPL.ico')
+        self.threshold_menu.title("Threshold Calibration")
+        self.threshold_input = tk.Text(self.threshold_menu, height=1, width=7)
+        self.threshold_input.grid(column=1, row=0)
+        threshold_text = tk.Label(self.threshold_menu, text="Intensity threshold:").grid(column=0, row=0)
+        finish_threshold = tk.Button(self.threshold_menu, text="Finish", command=self.finish_threshold).grid(column=1, row=3)
+    def finish_threshold(self):
+        try:
+            self._camera_widget.threshold = float(self.threshold_input.get("1.0", "end-1c"))
+        except (ValueError, AttributeError):
+            self._camera_widget.threshold = 0
+        self.threshold_menu.destroy()
     
             
 
@@ -305,6 +321,7 @@ class LiveViewCanvas(tk.Canvas):
         tk.Canvas.__init__(self, parent)
 
         self._intensity = 0
+        self.threshold = 0
         self.bind_all('<Motion>', self._get_intensity_at_cursor)
         
         self.roi_calibrate_on = False
@@ -372,8 +389,13 @@ class LiveViewCanvas(tk.Canvas):
         try:
             image1 = iq1.get_nowait()
             image2 = iq2.get_nowait()
+            #check these later!
+            image1 = np.where(image1 > self.threshold, image1, 0)
+            image2 = np.where(image2 > self.threshold, image2, 0)
             image1 = image1 * self._LCPL_mask
             image2 = image2 * self._RCPL_mask
+            
+            
             if self._type == "2cam": #when second camera added, beamsplitter means you need to flip the second image so LCPL and RCPl right way up
                 image2 = image2[::-1]
 
