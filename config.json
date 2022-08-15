@@ -1,0 +1,1 @@
+{"roi_left": [0, 0, 1024, 1024], "roi_right": [0, 0, 1024, 1024], "pixels_per_mm": 55.00909015790027, "tick_dist": 1.0, "cmaps": {"Raw": ["Reds", "Blues"], "DOCP": "seismic", "g_em": "seismic"}}
