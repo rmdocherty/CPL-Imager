@@ -14,10 +14,17 @@ import queue
 from datetime import datetime
 from os import mkdir, path, getcwd
 from sys import platform
+
+
 if platform == "linux" or platform == "linux2":
     file_sep = "/"
+    icon_extension = "xbm"
+    icon_path = f'@photos{file_sep}CPL.{icon_extension}'
 else:
     file_sep = "\\"
+    icon_extension = "ico"
+    icon_path = f'photos{file_sep}CPL.{icon_extension}'
+
 
 def clearQueue(queue):
     while not queue.empty():
@@ -132,7 +139,7 @@ class CPL_Viewer(tk.Frame):
     def settings_window(self):
         pad = 3
         self.settings_menu = tk.Toplevel()
-        self.settings_menu.iconbitmap(f'photos{file_sep}CPL.ico')
+        self.settings_menu.iconbitmap(f'{icon_path}')
         #self.settings_menu.geometry("240x220")
         self.settings_menu.title("Overlays")
         
@@ -170,7 +177,7 @@ class CPL_Viewer(tk.Frame):
     def _cmap_window(self):
         """Popup window to set colourmaps during operation."""
         self._cmap_menu = tk.Toplevel()
-        self._cmap_menu.iconbitmap(f'photos{file_sep}CPL.ico')
+        self._cmap_menu.iconbitmap(f'{icon_path}')
         self._cmap_menu.title("Colour map selector")
         LCPL = tk.Text(self._cmap_menu, height=2, width=30)
         LCPL_text = tk.Label(self._cmap_menu, text="LCPL:")
@@ -203,17 +210,17 @@ class CPL_Viewer(tk.Frame):
     def _calibrate_window(self):
         """Popup window to generate multiplicative correction map for cameras."""
         self._calibrate_menu = tk.Toplevel()
-        self._calibrate_menu.iconbitmap(f'photos{file_sep}CPL.ico')
+        self._calibrate_menu.iconbitmap(f'{icon_path}')
         #self._calibrate_menu.geometry("220x150")
         self._calibrate_menu.title("Calibration")
 
-        correction_map = tk.Button(self._calibrate_menu, text="RPS correction", command=self.rps_window, width=14).grid(column=0, row=1, padx=3, pady=2) #, columnspan=2
-        spatial_calibrate = tk.Button(self._calibrate_menu, text="Spatial calibration", command=self.start_spatial_calibrate, width=14).grid(column=0, row=2, padx=3, pady=2)
-        roi_reset = tk.Button(self._calibrate_menu, text="Reset ROI", command=self.reset_roi, width=14).grid(column=0, row=3, padx=3, pady=2)
-        roi_calibrate = tk.Button(self._calibrate_menu, text="ROI calibration", command=self.start_roi_calibrate, width=14).grid(column=0, row=4, padx=3, pady=2)
-        intensity_calibrate =  tk.Button(self._calibrate_menu, text="Intensity calibration", command=self.start_intensity_calibration, width=14).grid(column=0, row=5, padx=3, pady=2)
-        threshold_calibrate =  tk.Button(self._calibrate_menu, text="Set threshold", command=self.threshold_window, width=14).grid(column=0, row=6, padx=3, pady=2)
-        dummy = tk.Label(self._calibrate_menu, text="                                                                        ").grid(column=0, row=7, padx=3, pady=2)
+        correction_map = tk.Button(self._calibrate_menu, text="RPS correction", command=self.rps_window, width=19).grid(column=0, row=1, padx=3, pady=2) #, columnspan=2
+        spatial_calibrate = tk.Button(self._calibrate_menu, text="Spatial calibration", command=self.start_spatial_calibrate, width=19).grid(column=0, row=2, padx=3, pady=2)
+        roi_reset = tk.Button(self._calibrate_menu, text="Reset ROI", command=self.reset_roi, width=19).grid(column=0, row=3, padx=3, pady=2)
+        roi_calibrate = tk.Button(self._calibrate_menu, text="ROI calibration", command=self.start_roi_calibrate, width=19).grid(column=0, row=4, padx=3, pady=2)
+        intensity_calibrate =  tk.Button(self._calibrate_menu, text="Intensity calibration", command=self.start_intensity_calibration, width=19).grid(column=0, row=5, padx=3, pady=2)
+        threshold_calibrate =  tk.Button(self._calibrate_menu, text="Set threshold", command=self.threshold_window, width=19).grid(column=0, row=6, padx=3, pady=2)
+        #dummy = tk.Label(self._calibrate_menu, text="                                                                        ").grid(column=0, row=7, padx=3, pady=2)
     def start_spatial_calibrate(self):
         self._camera_widget.roi_calibrate_on = False
         self._camera_widget.spatial_calibrate_on = True
@@ -241,7 +248,7 @@ class CPL_Viewer(tk.Frame):
     
     def rps_window(self):
         self.rps_menu = tk.Toplevel()
-        self.rps_menu.iconbitmap(f'photos{file_sep}CPL.ico')
+        self.rps_menu.iconbitmap(f'{icon_path}')
         self.rps_menu.title("RPS Calibration")
         #self.rps_menu.geometry("220x100")
 
@@ -278,7 +285,7 @@ class CPL_Viewer(tk.Frame):
     
     def threshold_window(self):
         self.threshold_menu = tk.Toplevel()
-        self.threshold_menu.iconbitmap(f'photos{file_sep}CPL.ico')
+        self.threshold_menu.iconbitmap(f'{icon_path}')
         self.threshold_menu.title("Threshold Calibration")
         self.threshold_input = tk.Text(self.threshold_menu, height=1, width=7)
         self.threshold_input.grid(column=1, row=0)
@@ -600,7 +607,7 @@ class LiveViewCanvas(tk.Canvas):
         self.click_dist = np.sqrt(dx**2 + dy**2)
         
         self.spatial_menu = tk.Toplevel()
-        self.spatial_menu.iconbitmap(f'photos{file_sep}CPL.ico')
+        self.spatial_menu.iconbitmap(f'{icon_path}')
         self.spatial_menu.title("Spatial Calibration")
         #self.spatial_menu.geometry("220x100")
         enter_dist = tk.Text(self.spatial_menu, height=1, width=8)
@@ -645,7 +652,7 @@ class LiveViewCanvas(tk.Canvas):
     
     def intensity_calibrate(self):
         self.intensity_calibration = tk.Toplevel()
-        self.intensity_calibration.iconbitmap(f'photos{file_sep}CPL.ico')
+        self.intensity_calibration.iconbitmap(f'{icon_path}')
         self.intensity_calibrate_on = True
         self.intensity_calibration.title("Intensity Calibration")
         LCPL_intensity_text = tk.Label(self.intensity_calibration, text="LCPL % saturation:").grid(column=0, row=0)

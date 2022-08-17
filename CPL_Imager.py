@@ -6,17 +6,22 @@ Created on Fri Jul 30 10:51:34 2021
 @author: ronan
 """
 
-try:
-    # if on Windows, use the provided setup script to add the DLLs folder to the PATH
-    from windows_setup import configure_path
-    configure_path()
-except ImportError:
-    configure_path = None
+
 from thorlabs_tsi_sdk.tl_camera import TLCameraSDK
 from cameras import ImageAcquisitionThread, CompactImageAcquisitionThread, MockCamera
-from GUI import CPL_Viewer, LiveViewCanvas, platform
+from GUI import CPL_Viewer, LiveViewCanvas, platform, file_sep, icon_path
 import tkinter as tk
 
+
+if platform == "linux" or platform == "linux2":
+    pass
+else:
+    try:
+        # if on Windows, use the provided setup script to add the DLLs folder to the PATH
+        from windows_setup import configure_path
+        configure_path()
+    except ImportError:
+        configure_path = None
 
 class CPL_Imager():
     """
@@ -31,11 +36,8 @@ class CPL_Imager():
 
     def __init__(self):
         self._root = tk.Tk()
-        if platform == "linux" or platform == "linux2":
-            file_sep = "/"
-        else:
-            file_sep = "\\"
-        self._root.iconbitmap(f'photos{file_sep}CPL.ico')
+        
+        self._root.iconbitmap(f'{icon_path}')
         self._GUI = CPL_Viewer(master=self._root)
         self._root.title("CPL Imager")
         self._root.geometry("1400x800")
