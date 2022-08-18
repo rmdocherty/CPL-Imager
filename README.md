@@ -1,5 +1,5 @@
 # CPL-Imager
-![GUI screenshot](docs/GUI.png)
+![GUI screenshot](docs/images/GUI.png)
 
 CPL-Imager is the control software for a low-cost, compact imaging system for Circularly Polarized Light (CPL). This repository contains the Python source code for the software, installation instructions and scripts, instrument assembly instructions (including .stl files for 3D printing) and a user manual for the instrument.
 

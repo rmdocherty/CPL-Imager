@@ -165,6 +165,10 @@ class CPL_Viewer(tk.Frame):
         grid_check.grid(column=0, row=6, padx=pad, pady=pad)
     def toggle_intensity(self):
         self._camera_widget.show_intensity = not self._camera_widget.show_intensity
+        if self._camera_widget.show_intensity == True:
+            self._camera_widget.bind_all('<Motion>', self._camera_widget._get_intensity_at_cursor)
+        else:
+            self._camera_widget.unbind_all('<Motion>')
     def toggle_labels(self):
         self._camera_widget.show_labels = not self._camera_widget.show_labels
     def toggle_grid(self):
@@ -329,7 +333,7 @@ class LiveViewCanvas(tk.Canvas):
 
         self._intensity = 0
         self.threshold = 0
-        self.bind_all('<Motion>', self._get_intensity_at_cursor)
+        #self.bind_all('<Motion>', self._get_intensity_at_cursor)
         
         self.roi_calibrate_on = False
         self.spatial_calibrate_on = False
@@ -397,12 +401,12 @@ class LiveViewCanvas(tk.Canvas):
             image1 = iq1.get_nowait()
             image2 = iq2.get_nowait()
             #check these later!
-            image1 = np.where(image1 > self.threshold, image1, 0)
-            image2 = np.where(image2 > self.threshold, image2, 0)
-            image1 = image1 * self._LCPL_mask
-            image2 = image2 * self._RCPL_mask
-            
-            
+            if self.threshold > 0:
+                image1 = np.where(image1 > self.threshold, image1, 0)
+                image2 = np.where(image2 > self.threshold, image2, 0)
+            if self._LCPL_mask != np.array([0]):
+                image1 = image1 * self._LCPL_mask
+                image2 = image2 * self._RCPL_mask
             if self._type == "2cam": #when second camera added, beamsplitter means you need to flip the second image so LCPL and RCPl right way up
                 image2 = image2[::-1]
 
@@ -586,7 +590,8 @@ class LiveViewCanvas(tk.Canvas):
     def roi_window(self, text):
         tk.messagebox.showinfo("ROI setting complete", f"{text}, restart program to take effect.")
     def finish_roi_calibrate(self):
-        self.bind_all('<Motion>', self._get_intensity_at_cursor)
+        if self.show_intensity is True:
+            self.bind_all('<Motion>', self._get_intensity_at_cursor)
         x1, y1 = self.clicks[0]
         x2, y2 = self.clicks[1]
         ROI = [x1, y1, x2, y2]

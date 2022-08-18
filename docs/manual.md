@@ -1,7 +1,7 @@
 # CPL-Imager
 
 ## Introduction:
-Welcome to the manual for the CPL-Imager, a low-cost, compact circularly polarised imaging system. This system is designed to be quick to assemble and modular enough that it can be adapted to suit a variety of needs (in situ annealing, translation stages, magnets etc). Its is primarily designed to image chiral thin-films, but can easily be applied to other contexts, like solutions.
+Welcome to the manual for the CPL-Imager, a low-cost, compact circularly polarised imaging system. This system is designed to be quick to assemble and modular enough that it can be adapted to suit a variety of needs (in situ annealing, translation stages, magnets etc). It is primarily designed to image chiral thin-films, but can easily be applied to other contexts, like solutions.
 
 The instrument consists of a fresnel rhomb (which converts CPL to linearly polarised light), followed by a linear polariser in a piezoelectric rotation mount and a Thorlabs scientific camera. CPL-Imager controls the rotation of the piezomotor, ensuring subsequent images taken by the camera are of alternating handedness (i.e Left-CPL then Right-CPL then Left-CPL etc.). These LCPL and RCPL images are then combined to calculate differential absorbance and Circular Dichroism and these four quantities are then displayed on a live view in the GUI.
 
@@ -17,12 +17,13 @@ Abbreviations used:
 Detailed assembly instructions (including photos) can be found in "assembly.txt", but the long and short of is as follows:
 1) Place the FR into the 30-60mm TL cage adapter, then screw in the 2" rods in. 
 2) Place this construction in the 3D printed front body, then screw the setscrews into the ends of rods facing away from the FR.
-3) Place the ELL14 piezoelectric rotator on the back of the casing such that the setscrews poke through the holes in the rotator.
-4) Place the 3D printed back body case onto the poking out screws.
-5) Starting from bottom to top, screw in the 3" rods to the setscrews in the back body casing.
-6) Screw the capscrews through the back plate into the camera, then screw more capscrews through the reverse of the plate into the rods so the camera sits enclosed in the casing.
-7) Screw the capscrews through the front plate into the rods inside the front body casing.
-8) Place the piezorotator board into its space on the bottom of the back body, then plug the USBs from the camera and piezorotator board into either your computer or a Raspberry Pi.
+3) Place the linear polariser into the ELL14 rotator. I recommend testing the rotator to see if the angles it moves to are exactly 0 and 90 degrees - every ELL14 has a different offset to it which means the values defined as HORIZONTAL and VERTICAL in rotator.py may not work for you.
+4) Place the ELL14 piezoelectric rotator on the back of the casing such that the setscrews poke through the holes in the rotator.
+5) Place the 3D printed back body case onto the poking out screws.
+6) Starting from bottom to top, screw in the 3" rods to the setscrews in the back body casing.
+7) Screw the capscrews through the back plate into the camera, then screw more capscrews through the reverse of the plate into the rods so the camera sits enclosed in the casing.
+8) Screw the capscrews through the front plate into the rods inside the front body casing.
+9) Place the piezorotator board into its space on the bottom of the back body, then plug the USBs from the camera and piezorotator board into either your computer or a Raspberry Pi.
 
 There is an alternate setup with 2 cameras and a polarised beamsplitter (rather than the piezorotator), but this is more expensive and has difficulty in aligning the 2 cameras. However, it has no associated rotator delay so can run with a higher framerate.
 
@@ -51,12 +52,24 @@ There are 4 possible acquisition modes of the software, available under the "Acq
 
 ## Calibration:
 Pressing the "Calibrate" button will open a sub-menu with a variety of useful calibration options:
-- RPS Correction: remove any samples in the beam path and set up your source to be a Reference Polarization State i.e a state with a 50:50 mix of LCPL and RCPL and where each intensity reading is just barely saturated. Then enter '1' in both forms and press submit then a correction mask will be generated which adjusts any spots that aren't of value 1. This correction then persists, so will apply when imaging a sample. This is intended to correct errors in the setup like optical abberations.
-- Spatial Calibration: 
+- RPS correction: remove any samples in the beam path and set up your source to be a Reference Polarization State i.e a state with a 50:50 mix of LCPL and RCPL and where each intensity reading is just barely saturated. Then enter '1' in both forms and press submit then a correction mask will be generated which adjusts any spots that aren't of value 1. This correction then persists, so will apply when imaging a sample. This is intended to correct errors in the setup like optical abberations.
+- Spatial calibration: click two points on the screen separated by some reference distance, then enter the reference distance in mm into the popup and press 'Finish'. Then the spatial based overlays like ticks, axes and gridlines will automatically adjust to the new scale when toggled on in the 'Overlays' menu.
+- Reset ROI: reset camera ROI back to a wide view (1024x1024). Useful for calibrating the ROI later. Note that after any ROI adjustments the program must be restarted for these to take effect.
+- Calibrate ROI: click a point on the screen to act as the top-left corner of the ROI, then a rectangle will appear at the current cursor position showing a bounding box. Click a second point to define the other corner and finish the calbiration.
+- Intensity calibration: a popup will appear telling you the percentage of non-zero pixels in the LCPL or RCPL data that are 1 or above (i.e are saturated). When taking measurements it is preferable to have 0% saturation with as high an intensity as possible; you want to be just below the threshold of saturation.
+- Set threshold: set a threshold intensity value below which any readings will be set to 0. Useful if there's weak stray light.
 
 ## Overlays:
-
+These overlays appear over the data panes when toggled on in the menu (and are not saved to the photos):
+- Change cmaps: there is a text field for each data pane - enter the name of a valid matplotlib colourmap for each and press finish, then the colourmaps will be updated. I recommend diverging colourmaps for dA and CD panes and converging colourmaps for LCPL and RCPL.
+- Intensity: when toggled on, text will appear at the bottom of whichever data pane the cursor is on displaying the value of that pane at that point. This means the mouse can be used for quick data reading.
+- Label: display text which explains which pane is which.
+- Tick: a tick bar will appear on each pane showing the scale of the image. The size of the tick bar will be determined by your spatially calibrated pixels-per-mm value.
+- Axes: axes will appear on each pane, again with a scale given by the pixel-per-mm value
+- Grid: a grid will appear on each pane at the same positions as the axes but across the entire pane.
 
 ## Source code:
 
+
 ## Troubleshooting:
+
