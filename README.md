@@ -18,17 +18,17 @@ The instrument consists of a fresnel rhomb (which converts CPL to linearly polar
 - The software also works for the 2-CCDI setup where two cameras and a polarized beamsplitter are used in place of the piezoelectric rotator.
 
 ## Usage
-Once all the prerequisites described in "install" are setup, run "python CPL_Imager.py" from this directory to start the software (or run the script in an IDE of your choice). 
+Once all the prerequisites described in ``install`` are setup, run ``python CPL_Imager.py`` from this directory to start the software (or run the script in an IDE of your choice). 
 
 The respository structure is as follows:
-- "install" contains instructions and scripts to set up the libraries and dlls needed for both the software and the Thorlabs cameras.
-- "docs" contains the manual, quick start guide and instrument assembly instructions.
-- "photos" is where images taken by the camera are stored, as well as containing some images used by the software (for icons etc)
-- "config.json" contains options for the software in .json format, including ROIs, spatial calibration data and the colourmaps used by the software
+- ``install`` contains instructions and scripts to set up the libraries and dlls needed for both the software and the Thorlabs cameras.
+- ``docs`` contains the manual, quick start guide and instrument assembly instructions.
+- ``photos`` is where images taken by the camera are stored, as well as containing some images used by the software (for icons etc)
+- ``config.json`` contains options for the software in .json format, including ROIs, spatial calibration data and the colourmaps used by the software
 - The rest of the ".py" files are source code for the software:
-    - "CPL_Imager.py" is the entry point for the software, which detects and initalises the cameras used.
-    - "rotator.py" controls the ELL14 piezoelectric rotator
-    - "cameras.py" controls the connected camera(s) and puts the images taken onto a queue
-    - "colourmapper.py" colourmaps the image data from the cameras and combines the two input images into a four panel output for display
-    - "GUI.py" handles the user interface: displaying the live data, handling user interaction and issuing commands to the camera/rotator etc.
+    - ``CPL_Imager.py`` is the entry point for the software, which detects and initalises the cameras used.
+    - ``rotator.py`` controls the ELL14 piezoelectric rotator
+    - ``cameras.py`` controls the connected camera(s) and puts the images taken onto a queue
+    - ``colourmapper.py`` colourmaps the image data from the cameras and combines the two input images into a four panel output for display
+    - ``GUI.py` handles the user interface: displaying the live data, handling user interaction and issuing commands to the camera/rotator etc.
     
