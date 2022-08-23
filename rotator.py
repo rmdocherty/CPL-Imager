@@ -13,6 +13,7 @@ from math import floor
 
 PULSES_PER_DEGREE = 262144 / 360 #defined in docs
 OFFSET_DEGREES = 1.7578125
+#old values, H=11.7, V=60.7
 HORIZONTAL = 11.7
 VERTICAL = 60.7
 
@@ -34,11 +35,9 @@ class Rotator():
             self._port.reset_input_buffer()
             self._port.reset_output_buffer()
             sleep(0.05)
-            self._home_motor()
-            #self._optimize_motor()
-            #self._freq_search()
-            #self._set_jog_size(45)
-            self.rotate_to_angle(HORIZONTAL) #reset pos
+            self._home_motor() #reset pos
+            self.set_jog_90()
+            #self.rotate_to_angle(HORIZONTAL) #reset pos
         except Exception as error:
             print(f"Error: {error}, please supply a port.")
 
@@ -67,11 +66,14 @@ class Rotator():
         self._check_status()
 
     def _home_motor(self):
-        self._send_command("0ho0")
+        self._send_command("0ho1")
 
     def _set_jog_size(self, angle):
         set_angle_string = self._get_set_angle_string(angle)
         self._send_command("0sj", set_angle_string)
+    
+    def set_jog_90(self):
+        self._send_command("0sj00008C00")
 
     def _get_offset(self):
         self._send_command("0go")
@@ -117,6 +119,16 @@ class Rotator():
         """Send rotate command and wait until device rotated."""
         set_angle_str = self._get_set_angle_string(angle)
         self._send_command("0ma", data=set_angle_str)
+        self._check_angle()
+        return 0
+    
+    def rotate_to_0(self):
+        self._send_command("0ma00000000")
+        self._check_angle()
+        return 0
+    
+    def rotate_to_90(self):
+        self._send_command("0ma00008C00")
         self._check_angle()
         return 0
 

@@ -59,6 +59,7 @@ class CPL_Viewer(tk.Frame):
         mkdir("photos") if not path.exists("photos") else None #create photos folder if doesn't already exist
         tk.Frame.__init__(self, master)
         self._live = True
+        self.mode = "Both"
         self.master=master
 
     def set_camera_widget(self, camera_widget_object):
@@ -115,15 +116,17 @@ class CPL_Viewer(tk.Frame):
         else:
             self._switch_to_g_em()
     def _take_photo(self):
-        if self._live is False:
+        if self.mode == "Pause":
             clearQueue(self._CQ)
-            print("Taking static photo")
-            self._CQ.put_nowait("Photo")
-            self._camera_widget._get_image()
+            clearQueue(self._camera_widget.image_queue1)
+            clearQueue(self._camera_widget.image_queue2)
+            self._CQ.put("Snap")
+            #self._camera_widget._get_image()
         self._camera_widget.take_photo()
     def _toggle_live(self, mode):
         """Pause the live view - used for compact setup to avoid overusing the
         rotation motor."""
+        self.mode = mode
         if mode == "LCPL" or mode == "RCPL":
             self.rotator_icon.pause()
             self.camera_icon.on()
@@ -333,7 +336,7 @@ class LiveViewCanvas(tk.Canvas):
 
         self._intensity = 0
         self.threshold = 0
-        #self.bind_all('<Motion>', self._get_intensity_at_cursor)
+        self.bind_all('<Motion>', self._get_intensity_at_cursor)
         
         self.roi_calibrate_on = False
         self.spatial_calibrate_on = False
@@ -390,6 +393,7 @@ class LiveViewCanvas(tk.Canvas):
     def set_cmaps(self, cmap_list):
         self._cmap.set_cmaps(cmap_list)
     
+
     def _get_image(self):
         """Grab the two images (LCPL & RCPL) from their two queues, apply
         correction (if it exist) then combine the iumage data into one array
@@ -422,14 +426,16 @@ class LiveViewCanvas(tk.Canvas):
                 self._image_width = self._image.width()
                 self._image_height = self._image.height()  #remove this scaling later!
                 self.config(width=self._image_width, height=self._image_height)
-            # DRAWING STUFF
+        except queue.Empty:
+            pass
+        # DRAWING STUFF
+        try:
             self.delete('all') #need to garbage collect old canvas objects (not deleted automatically)
             self.create_image(0, 0, image=self._image, anchor='nw')
             self.draw_overlays()
             if self.cbar_initialised is False:
                 self.initialise_cbar(image1, image2)
-            
-        except queue.Empty:
+        except (AttributeError): # no image case
             pass
         self.after(20, self._get_image) #repeat this function every 20ms
 
@@ -443,6 +449,7 @@ class LiveViewCanvas(tk.Canvas):
         """
         timestamp = datetime.now()
         timestamp_string = timestamp.strftime("%d-%m-%y_%H_%M_%S_%f")
+        print(f"photo taken at {timestamp_string}")
         if platform == "linux" or platform == "linux2":
             file_sep = "/"
         else:
@@ -580,7 +587,7 @@ class LiveViewCanvas(tk.Canvas):
             self._intensity = data[y_prime, x_prime]
             self.mouse_pos = (x, y)
 
-        except IndexError: #if out of bounds then pass
+        except (IndexError, AttributeError): #if out of bounds then pass
             x, y = 0, 0
     def track_mouse(self, event):
         self.mouse = (event.x, event.y)
@@ -594,7 +601,10 @@ class LiveViewCanvas(tk.Canvas):
             self.bind_all('<Motion>', self._get_intensity_at_cursor)
         x1, y1 = self.clicks[0]
         x2, y2 = self.clicks[1]
+        
         ROI = [x1, y1, x2, y2]
+        ROI = [int(x*2.8444444) for x in ROI]
+        print(ROI)
         write_to_json("roi_left", ROI) #[] = [x1, y1, x2, y2]
         write_to_json("roi_right", ROI)
         try:

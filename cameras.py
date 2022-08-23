@@ -137,6 +137,7 @@ class CompactImageAcquisitionThread(ImageAcquisitionThread):
         Rotate camera & take image. Each time image is taken and put onto queue,
         switch which queue is being used.
         """
+        jog_count = 0
         while not self._stop_event.is_set():
             try:
                 self._mode = self._control_queue.get_nowait()
@@ -144,10 +145,10 @@ class CompactImageAcquisitionThread(ImageAcquisitionThread):
                 pass
             if self._mode == "Both":
                 if self._imaging_LCPl is True:
-                    self._rotate_mount(rotator.HORIZONTAL) #motor is horizontal by default and offset by a few degrees. Also 45 -> 90 for some reason so 52 is approx. vertical
+                    self._rotator.rotate_to_0()
                     iq = self._image_queue
                 else:
-                    self._rotate_mount(rotator.VERTICAL) # approx horizontal due to offset
+                    self._rotator.rotate_to_90()
                     iq = self._image_queue_2
                 try:
                     frame = self._camera.get_pending_frame_or_null()
@@ -162,11 +163,11 @@ class CompactImageAcquisitionThread(ImageAcquisitionThread):
                     break
             elif self._mode == "LCPL" or self._mode == "RCPL":
                 if self._mode == "LCPL":
-                    self._rotate_mount(rotator.HORIZONTAL) #motor is horizontal by default and offset by a few degrees. Also 45 -> 90 for some reason so 52 is approx. vertical
+                    self._rotator.rotate_to_0()
                     iq_main = self._image_queue
                     iq_null = self._image_queue_2
                 else:
-                    self._rotate_mount(rotator.VERTICAL) #motor is horizontal by default and offset by a few degrees. Also 45 -> 90 for some reason so 52 is approx. vertical
+                    self._rotator.rotate_to_90()
                     iq_main = self._image_queue_2
                     iq_null = self._image_queue
                 try:
@@ -178,11 +179,25 @@ class CompactImageAcquisitionThread(ImageAcquisitionThread):
                         iq_null.put_nowait(null)
                 except queue.Full:
                     pass
+            elif self._mode == "Snap":
+                self._rotator.rotate_to_0()
+                iq, iq2 = self._image_queue, self._image_queue_2
+                frame = self._camera.get_pending_frame_or_null()
+                if frame is not None:
+                    pil_image = self._get_image(frame)
+                    iq.put_nowait(pil_image)
+                self._rotator.rotate_to_90()
+                frame = self._camera.get_pending_frame_or_null()
+                if frame is not None:
+                    pil_image = self._get_image(frame)
+                    iq2.put_nowait(pil_image)
+                self._mode = "Pause" #reset mode
             elif self._mode == "Pause":
                 pass
             else:
                 pass
         print("Image acquisition has stopped")
+        #self._rotator._home_motor()
         self._camera.disarm()
         self._camera.dispose()
 
