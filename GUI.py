@@ -117,11 +117,18 @@ class CPL_Viewer(tk.Frame):
             self._switch_to_g_em()
     def _take_photo(self):
         if self.mode == "Pause":
+            iq1, iq2 = self._camera_widget.image_queue1, self._camera_widget.image_queue2
             clearQueue(self._CQ)
-            clearQueue(self._camera_widget.image_queue1)
-            clearQueue(self._camera_widget.image_queue2)
+            clearQueue(iq1)
+            clearQueue(iq2)
             self._CQ.put("Snap")
-            #self._camera_widget._get_image()
+            (img1, img2) = self._camera_widget._get_image(iq1, iq2)
+            photo_taken = False
+            while photo_taken is False:
+                (img1, img2) = self._camera_widget._get_image(iq1, iq2)
+                if img1 is not None and img2 is not None:
+                    photo_taken = True
+            self._CQ.put("Pause")
         self._camera_widget.take_photo()
     def _toggle_live(self, mode):
         """Pause the live view - used for compact setup to avoid overusing the
@@ -364,7 +371,7 @@ class LiveViewCanvas(tk.Canvas):
         
         self._sizes = {"Raw": (720, 720), "DOCP": (360, 360), "g_em": (360, 360), "CD": (360, 360)}
 
-        self._get_image()
+        self.loop()
 
     def set_masks(self, LCPL, RCPL):
         self._LCPL_mask = LCPL
@@ -393,14 +400,26 @@ class LiveViewCanvas(tk.Canvas):
     def set_cmaps(self, cmap_list):
         self._cmap.set_cmaps(cmap_list)
     
+    def loop(self):
+        iq1 = self.image_queue1
+        iq2 = self.image_queue2
+        image1, image2 = self._get_image(iq1, iq2)
+        try:
+            self.delete('all') #need to garbage collect old canvas objects (not deleted automatically)
+            self.create_image(0, 0, image=self._image, anchor='nw')
+            self.draw_overlays()
+            if self.cbar_initialised is False:
+                self.initialise_cbar(image1, image2)
+        except (AttributeError): # no image case
+            pass
+        self.after(20, self.loop)
+        
 
-    def _get_image(self):
+    def _get_image(self, iq1, iq2):
         """Grab the two images (LCPL & RCPL) from their two queues, apply
         correction (if it exist) then combine the iumage data into one array
         and colourmap it. Next resize these images and draw them onto the canvas.
         If either queue is empty, pass."""
-        iq1 = self.image_queue1
-        iq2 = self.image_queue2
         try:
             image1 = iq1.get_nowait()
             image2 = iq2.get_nowait()
@@ -426,18 +445,9 @@ class LiveViewCanvas(tk.Canvas):
                 self._image_width = self._image.width()
                 self._image_height = self._image.height()  #remove this scaling later!
                 self.config(width=self._image_width, height=self._image_height)
+            return image1, image2
         except queue.Empty:
-            pass
-        # DRAWING STUFF
-        try:
-            self.delete('all') #need to garbage collect old canvas objects (not deleted automatically)
-            self.create_image(0, 0, image=self._image, anchor='nw')
-            self.draw_overlays()
-            if self.cbar_initialised is False:
-                self.initialise_cbar(image1, image2)
-        except (AttributeError): # no image case
-            pass
-        self.after(20, self._get_image) #repeat this function every 20ms
+            return None, None
 
     def take_photo(self):
         """Take snapshot of current image on the canvas and save as bitmap.

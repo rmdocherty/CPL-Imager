@@ -98,7 +98,7 @@ class CPL_Imager():
         camera_widget = self._gen_widget(iq1, iq2)
         self._GUI.set_camera_widget(camera_widget)
         self._start_cameras(cam1, cam2)
-        #self._GUI.set_control_queue("")
+        self._GUI.set_control_queue(image_acquisition_thread_1._control_queue) # check this later!
         image_acquisition_thread_1.start()
         image_acquisition_thread_2.start()
 

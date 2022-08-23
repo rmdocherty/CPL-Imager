@@ -46,6 +46,7 @@ class ImageAcquisitionThread(threading.Thread):
         self._camera.image_poll_timeout_ms = 0  # Do not want to block for long periods of time. was 0!!!
         self._image_queue = queue.Queue(maxsize=2)
         self._stop_event = threading.Event()
+        camera.exposure_time_us = 11000 
         self._get_roi_from_file()
 
     def _get_roi_from_file(self):
@@ -191,7 +192,7 @@ class CompactImageAcquisitionThread(ImageAcquisitionThread):
                 if frame is not None:
                     pil_image = self._get_image(frame)
                     iq2.put_nowait(pil_image)
-                self._mode = "Pause" #reset mode
+                #self._mode = "Pause" #reset mode
             elif self._mode == "Pause":
                 pass
             else:
@@ -246,6 +247,7 @@ class MockCamera(threading.Thread):
         self._image_queue = queue.Queue(maxsize=2)
         self._stop_event = threading.Event()
         self._label = label
+        self._control_queue = queue.Queue(maxsize=2)
 
     def get_output_queue(self):
         """Getter method for output queue."""
