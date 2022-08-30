@@ -13,17 +13,29 @@ Abbreviations used:
 - FR = Fresnel Rhomb
 - TL = ThorLabs
 
+## Parts list:
+1) Mounted quarter-wave Fresnel rhomb retarder (Thorlabs, FR600QM)
+2) Wire grid polarizer (Thorlabs, WP25M-VIS)
+3) Piezoelectric rotation mount (Thorlabs, ELL14K)
+4) USB controlled monochrome Zelux® 1.6 MP CMOS Cameras are used (Thorlabs, CS165MU/M)
+5) 6 mm focal length f = 1.4 Navitar lens (Thorlabs, MVL6WA)
+6) Rods, 2", 4 pack (Thorlabs, ER2-P4)
+7) Rods, 3", 4 pack (Thorlabs, ER3-P4)
+8) 4-40 Capscrews; 3/8", 50 pack (Thorlabs, SH4S038)
+9) 4-40 Setscrews; 1/2", cup-tipped, 50 pack (Accu, SSU-4-40-1/2-A2 or Amazon)
+10) Black 3D printing ABS or PLA plastic (Amazon)
+
 ## Assembly:
-Detailed assembly instructions (including photos) can be found in "assembly.txt", but the long and short of is as follows:
-1) Place the FR into the 30-60mm TL cage adapter, then screw in the 2" rods in. 
+0) Print all the 3D printed parts found in the 'build' directory of this repo
+1) Place the FR into the 30-60mm TL cage adapter, ensure it is aligned at 45° from the vertical then fix it in place with 2 slip rings. Screw in the 2" rods in. 
 2) Place this construction in the 3D printed front body, then screw the setscrews into the ends of rods facing away from the FR.
-3) Place the linear polariser into the ELL14 rotator. I recommend testing the rotator to see if the angles it moves to are exactly 0 and 90 degrees - every ELL14 has a different offset to it which means the values defined as HORIZONTAL and VERTICAL in rotator.py may not work for you.
+3) Place the linear polariser into the ELL14 rotator. Ensure the linear polariser is aligned at 0° to the vertical, even if the rotator casing is slightly angled (every ELL14 has a slightly different home angle, this is accounted for in rotator.py).
 4) Place the ELL14 piezoelectric rotator on the back of the casing such that the setscrews poke through the holes in the rotator.
-5) Place the 3D printed back body case onto the poking out screws.
-6) Starting from bottom to top, screw in the 3" rods to the setscrews in the back body casing.
+5) Place the 3D printed back body case onto the poking out screws. Be careful not to damage or knock any of the electronics on the piezo board whilst doing this (though the casing is designed to account for this)
+6) Starting from bottom to top, screw in the 3" rods to the setscrews in the back body casing. This step is tough - there isn't a lot of give in the casing and there can be slipping. Be careful the rods don't hit the rotator.
 7) Screw the capscrews through the back plate into the camera, then screw more capscrews through the reverse of the plate into the rods so the camera sits enclosed in the casing.
 8) Screw the capscrews through the front plate into the rods inside the front body casing.
-9) Place the piezorotator board into its space on the bottom of the back body, then plug the USBs from the camera and piezorotator board into either your computer or a Raspberry Pi.
+9) Place the piezorotator board ribbon cable into its space on the bottom of the back body, then plug the USBs from the camera and piezorotator board into either your computer or a Raspberry Pi.
 
 There is an alternate setup with 2 cameras and a polarised beamsplitter (rather than the piezorotator), but this is more expensive and has difficulty in aligning the 2 cameras. However, it has no associated rotator delay so can run with a higher framerate.
 
