@@ -28,6 +28,8 @@ Detailed assembly instructions (including photos) can be found in "assembly.txt"
 There is an alternate setup with 2 cameras and a polarised beamsplitter (rather than the piezorotator), but this is more expensive and has difficulty in aligning the 2 cameras. However, it has no associated rotator delay so can run with a higher framerate.
 
 ## Software:
+NB: ANY PHOTOS TAKEN BEFORE 30/08/2022 HAVE LCPL AND RCPL FLIPPED IN THE OUTPUT FILES: LCPL WAS IN THE RIGHT ARRAY, RCPL WAS IN THE LEFT ARRAY. THIS HAS NOW BEEN FIXED, AND LCPL DATA IS THE LEFT PANE AND RCPL IS THE RIGHT
+
 These following sections refer to the control software of the CPL-Imager. Certain sections are colour coded to refer to sections of the GUI image. A handy quickstart guide is in the "docs" folder under the filename "quickstart.png", which may be sufficient to understand the software.
 
 

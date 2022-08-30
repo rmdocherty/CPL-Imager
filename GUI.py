@@ -448,8 +448,8 @@ class LiveViewCanvas(tk.Canvas):
             if self._type == "2cam": #when second camera added, beamsplitter means you need to flip the second image so LCPL and RCPl right way up
                 image2 = image2[::-1]
 
-            self._np_array = np.hstack((image1, image2))
-            unrotated_img = self._cmap.colour_map(image1, image2)
+            self._np_array = np.hstack((image2, image1))
+            unrotated_img = self._cmap.colour_map(image2, image1)
             self._img_data = unrotated_img
             resized = unrotated_img.resize(self._sizes[self._mode]) #(w, h)
             self._resized = resized

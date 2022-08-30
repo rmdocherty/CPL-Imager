@@ -196,56 +196,61 @@ class CompactImageAcquisitionThread(ImageAcquisitionThread):
         switch which queue is being used.
         """
         jog_count = 0
-        while not self._stop_event.is_set():
-            try:
-                self._mode = self._control_queue.get_nowait()
-            except queue.Empty:
-                pass
-            if self._mode == "Both":
-                if self._imaging_LCPl is True:
+        try:
+            while not self._stop_event.is_set():
+                try:
+                    self._mode = self._control_queue.get_nowait()
+                except queue.Empty:
+                    pass
+                if self._mode == "Both":
+                    if self._imaging_LCPl is True:
+                        self._rotator.rotate_to_0()
+                        iq = self._image_queue
+                    else:
+                        self._rotator.rotate_to_90()
+                        iq = self._image_queue_2
+                    self.get_camera_image(iq, toggle=True)
+                    """
+                    if jog_count == 4:
+                        self._rotator._home_motor()
+                        jog_count = 0
+                    else:
+                        self._rotator.jog_forward()
+                        jog_count += 1
+                    """
+                elif self._mode == "LCPL" or self._mode == "RCPL":
+                    if self._mode == "LCPL":
+                        self._rotator.rotate_to_0()
+                        iq_main = self._image_queue
+                        iq_null = self._image_queue_2
+                    else:
+                        self._rotator.rotate_to_90()
+                        iq_main = self._image_queue_2
+                        iq_null = self._image_queue
+                    self.get_camera_image(iq_main, toggle=False, iq2=iq_null)
+                elif self._mode == "Snap":
                     self._rotator.rotate_to_0()
-                    iq = self._image_queue
-                else:
+                    iq, iq2 = self._image_queue, self._image_queue_2
+                    self.get_camera_image(iq, toggle=False, iq2=None)
                     self._rotator.rotate_to_90()
-                    iq = self._image_queue_2
-                self.get_camera_image(iq, toggle=True)
-                """
-                if jog_count == 4:
-                    self._rotator._home_motor()
-                    jog_count = 0
+                    self.get_camera_image(iq2, toggle=False, iq2=None)
+                    #self._mode = "Pause" #reset mode
+                elif self._mode[:3] == "ROI":
+                    roi_strs = self._mode[4:].split(',')
+                    ROI = [int(x) for x in roi_strs]
+                    clearQueue(self._image_queue)
+                    clearQueue(self._image_queue_2)
+                    self.change_cam_settings(ROI=ROI)
+                    self._mode = self._prev_mode
+                elif self._mode == "Pause":
+                    pass
                 else:
-                    self._rotator.jog_forward()
-                    jog_count += 1
-                """
-            elif self._mode == "LCPL" or self._mode == "RCPL":
-                if self._mode == "LCPL":
-                    self._rotator.rotate_to_0()
-                    iq_main = self._image_queue
-                    iq_null = self._image_queue_2
-                else:
-                    self._rotator.rotate_to_90()
-                    iq_main = self._image_queue_2
-                    iq_null = self._image_queue
-                self.get_camera_image(iq_main, toggle=False, iq2=iq_null)
-            elif self._mode == "Snap":
-                self._rotator.rotate_to_0()
-                iq, iq2 = self._image_queue, self._image_queue_2
-                self.get_camera_image(iq, toggle=False, iq2=None)
-                self._rotator.rotate_to_90()
-                self.get_camera_image(iq2, toggle=False, iq2=None)
-                #self._mode = "Pause" #reset mode
-            elif self._mode[:3] == "ROI":
-                roi_strs = self._mode[4:].split(',')
-                ROI = [int(x) for x in roi_strs]
-                clearQueue(self._image_queue)
-                clearQueue(self._image_queue_2)
-                self.change_cam_settings(ROI=ROI)
-                self._mode = self._prev_mode
-            elif self._mode == "Pause":
-                pass
-            else:
-                pass
-            self._prev_mode = self._mode
+                    pass
+                self._prev_mode = self._mode
+        except:
+            self._rotator._home_motor()
+            self._rotator._port.reset_input_buffer()
+            self._rotator._port.reset_output_buffer()
         print("Image acquisition has stopped")
         #self._rotator._home_motor()
         self._camera.disarm()
