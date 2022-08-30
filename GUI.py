@@ -31,6 +31,16 @@ def clearQueue(queue):
         queue.get()
     return 0
 
+def change_camera_setting(iq1, iq2, CQ, ROI=None, exposure_time=None):
+    if ROI is not None:
+        ROI_str = "ROI:"+",".join([str(x) for x in ROI])
+        CQ.put(ROI_str)
+    if exposure_time is not None:
+        exposure_str = str(exposure_time)
+        CQ.put("EXP:"+exposure_str)
+    clearQueue(iq1)
+    clearQueue(iq2)
+
 class Traffic_light(tk.Canvas):
     def __init__(self, parent):
         tk.Canvas.__init__(self, parent, width=30, height=30)
@@ -64,11 +74,13 @@ class CPL_Viewer(tk.Frame):
 
     def set_camera_widget(self, camera_widget_object):
         self._camera_widget = camera_widget_object
+        #self._camera_widget._CQ = self._CQ
         #self._camera_widget._mode = "Both"
         self._createWidgets()
 
     def set_control_queue(self, cq):
         self._CQ = cq
+        self._camera_widget._CQ = cq
     
     def _createWidgets(self):
         """Add menu buttons to GUI and bind functions to them."""
@@ -234,6 +246,7 @@ class CPL_Viewer(tk.Frame):
         roi_calibrate = tk.Button(self._calibrate_menu, text="ROI calibration", command=self.start_roi_calibrate, width=19).grid(column=0, row=4, padx=3, pady=2)
         intensity_calibrate =  tk.Button(self._calibrate_menu, text="Intensity calibration", command=self.start_intensity_calibration, width=19).grid(column=0, row=5, padx=3, pady=2)
         threshold_calibrate =  tk.Button(self._calibrate_menu, text="Set threshold", command=self.threshold_window, width=19).grid(column=0, row=6, padx=3, pady=2)
+        exposure_calibrate = tk.Button(self._calibrate_menu, text="Set exposure time", command=self.threshold_window, width=19).grid(column=0, row=7, padx=3, pady=2)
         #dummy = tk.Label(self._calibrate_menu, text="                                                                        ").grid(column=0, row=7, padx=3, pady=2)
     def start_spatial_calibrate(self):
         self._camera_widget.roi_calibrate_on = False
@@ -252,14 +265,13 @@ class CPL_Viewer(tk.Frame):
         ROI = (0, 0, 1024, 1024)
         write_to_json("roi_left", ROI)
         write_to_json("roi_right", ROI)
-        try:
-            self._camera.roi = ROI
-        except:
-            print("Failed to set camera ROI")
+        change_camera_setting(self._camera_widget.image_queue1, self._camera_widget.image_queue2, self._CQ, ROI)
         self._camera_widget.roi_window("ROI reset")
     def _finish_calibrate(self):
         self._calibrate_menu.destroy()
+        
     
+
     def rps_window(self):
         self.rps_menu = tk.Toplevel()
         self.rps_menu.iconbitmap(f'{icon_path}')
@@ -310,6 +322,7 @@ class CPL_Viewer(tk.Frame):
             self._camera_widget.threshold = float(self.threshold_input.get("1.0", "end-1c"))
         except (ValueError, AttributeError):
             self._camera_widget.threshold = 0
+        self._camera_widget.cbar_initialised = False
         self.threshold_menu.destroy()
     
             
@@ -327,6 +340,7 @@ class LiveViewCanvas(tk.Canvas):
     """
 
     def __init__(self, parent, iq1, iq2, img_type="default"):
+        self.parent = parent
         self.image_queue1 = iq1
         self.image_queue2 = iq2
         self._image_width = 0
@@ -367,7 +381,8 @@ class LiveViewCanvas(tk.Canvas):
         self._cbar_canv = tk.Canvas(parent)#parent
         self._cbar_canv.grid(column=7, row=0, rowspan=5, columnspan=1, padx=16, pady=16)
         self._mode = "Raw"
-
+        
+        #self._CQ = parent._CQ
         
         self._sizes = {"Raw": (720, 720), "DOCP": (360, 360), "g_em": (360, 360), "CD": (360, 360)}
 
@@ -377,8 +392,8 @@ class LiveViewCanvas(tk.Canvas):
         self._LCPL_mask = LCPL
         self._RCPL_mask = RCPL
     def initialise_cbar(self, img1, img2):
-        delta_A = dA(img1, img2) # dA = np.log10(img1/img2) #img1 - img2#np.log10(img2/img1)
-        theta_mdeg = CD(delta_A)#theta_mdeg = np.arctan( np.tanh( (np.log(10)*dA)/4 )) * (180*10**3) / np.pi
+        delta_A = img1 - img2 #dA(img1, img2) # dA = np.log10(img1/img2) #img1 - img2#np.log10(img2/img1)
+        theta_mdeg = CD(dA(img1, img2))#theta_mdeg = np.arctan( np.tanh( (np.log(10)*dA)/4 )) * (180*10**3) / np.pi
         vmax_dA = max(np.abs(np.amax(delta_A)), np.abs(np.amin(delta_A)))
         vmax_theta_mdeg = max(np.abs(np.amax(theta_mdeg)), np.abs(np.amin(theta_mdeg)))
         cbar_img = self._cmap.gen_colourbar(limits=[np.array([[-vmax_dA, vmax_dA]]), np.array([[-vmax_theta_mdeg, vmax_theta_mdeg]])])
@@ -410,7 +425,7 @@ class LiveViewCanvas(tk.Canvas):
             self.draw_overlays()
             if self.cbar_initialised is False:
                 self.initialise_cbar(image1, image2)
-        except (AttributeError): # no image case
+        except: # no image case
             pass
         self.after(20, self.loop)
         
@@ -421,15 +436,15 @@ class LiveViewCanvas(tk.Canvas):
         and colourmap it. Next resize these images and draw them onto the canvas.
         If either queue is empty, pass."""
         try:
-            image1 = iq1.get_nowait()
-            image2 = iq2.get_nowait()
+            image1 = iq1.get(block=True, timeout=0.001)#iq1.get_nowait()
+            image2 = iq2.get(block=True, timeout=0.001)#get_nowait()
             #check these later!
             if self.threshold > 0:
                 image1 = np.where(image1 > self.threshold, image1, 0)
                 image2 = np.where(image2 > self.threshold, image2, 0)
-            if self._LCPL_mask != np.array([0]):
-                image1 = image1 * self._LCPL_mask
-                image2 = image2 * self._RCPL_mask
+            #if self._LCPL_mask != np.array([0]):
+            image1 = image1 * self._LCPL_mask
+            image2 = image2 * self._RCPL_mask
             if self._type == "2cam": #when second camera added, beamsplitter means you need to flip the second image so LCPL and RCPl right way up
                 image2 = image2[::-1]
 
@@ -517,8 +532,8 @@ class LiveViewCanvas(tk.Canvas):
         """Draw the current intensity to the screen."""
         x, y = self.mouse_pos
         quad_x, quad_y = x // 360, y // 360
-        names = [["LCPL", "RCPL"], ["dA", "CD"]]
-        positions = [[(260, 350), (620, 350)], [(270, 710), (620, 710)]]
+        names = [["LCPL", "RCPL"], ["dA", "CD"]] #was dA
+        positions = [[(220, 350), (580, 350)], [(220, 710), (580, 710)]]
         mode = names[quad_y][quad_x]
         pos = positions[quad_y][quad_x]
         self.create_text(pos[0], pos[1], anchor=tk.W, fill="Black", font=("Arial", 12), text=f"{mode}:{self._intensity:.4f}")
@@ -559,10 +574,10 @@ class LiveViewCanvas(tk.Canvas):
         mouse = self.mouse
         self.create_rectangle(click[0], click[1], mouse[0], mouse[1], outline="Orange")
     def draw_labels(self):
-        self.create_text(10, 10, width=0.1, anchor=tk.W, fill="Black", font=("Arial", 12), text="LCPL")
-        self.create_text(370, 10, width=0.1, anchor=tk.W, fill="Black", font=("Arial", 12), text="RCPL")
-        self.create_text(10, 370, width=0.1, anchor=tk.W, fill="Black", font=("Arial", 12), text="dA")
-        self.create_text(370, 370, width=0.1, anchor=tk.W, fill="Black", font=("Arial", 12), text="CD (mdeg)")
+        self.create_text(10, 15, width=0.1, anchor=tk.W, fill="Black", font=("Arial", 12), text="LCPL")
+        self.create_text(370, 15, width=0.1, anchor=tk.W, fill="Black", font=("Arial", 12), text="RCPL")
+        self.create_text(10, 375, width=0.1, anchor=tk.W, fill="Black", font=("Arial", 12), text="dA") #was dA
+        self.create_text(370, 375, width=0.1, anchor=tk.W, fill="Black", font=("Arial", 12), text="CD (mdeg)")
     
     def add_click(self, event):
         if self.spatial_calibrate_on or self.roi_calibrate_on:
@@ -586,8 +601,8 @@ class LiveViewCanvas(tk.Canvas):
             scale_factor_y = arr_y / self._sizes[self._mode][1]
             LCPL = self._np_array[:, :arr_x]
             RCPL = self._np_array[:, arr_x:]
-            delta_A = dA(LCPL, RCPL)#dA = np.log10(LCPL/RCPL) #LCPL - RCPL#np.log10(RCPL/LCPL)
-            theta_mdeg = CD(delta_A) #np.arctan(np.tanh( (np.log(10)*dA) /4 )) * (180*10**3) / np.pi
+            delta_A = dA(LCPL, RCPL) #LCPL - RCPL#dA(LCPL, RCPL)
+            theta_mdeg = CD(dA(LCPL, RCPL))
             bot = np.hstack((delta_A, theta_mdeg))
             data = np.vstack((data, bot))
 
@@ -605,22 +620,25 @@ class LiveViewCanvas(tk.Canvas):
     def roi_calibrate(self):
         self.bind_all('<Motion>', self.track_mouse)
     def roi_window(self, text):
-        tk.messagebox.showinfo("ROI setting complete", f"{text}, restart program to take effect.")
+        #tk.messagebox.showinfo("ROI setting complete", f"{text}, restart program to take effect.")
+        pass
     def finish_roi_calibrate(self):
         if self.show_intensity is True:
             self.bind_all('<Motion>', self._get_intensity_at_cursor)
         x1, y1 = self.clicks[0]
         x2, y2 = self.clicks[1]
         
-        ROI = [x1, y1, x2, y2]
-        ROI = [int(x*2.8444444) for x in ROI]
-        print(ROI)
+        coords = read_from_json("roi_left")
+        #(622, 585, 711, 702)
+        lx, by, rx, ty = (coords[0], coords[1], coords[2], coords[3])
+        sfx, sfy = (rx - lx) / 360, (ty - by) / 360
+        ROI = [x1*sfx + lx, y1*sfy + by, x2*sfx + lx, y2*sfy + by]
+        ROI = [int(x) for x in ROI]
         write_to_json("roi_left", ROI) #[] = [x1, y1, x2, y2]
         write_to_json("roi_right", ROI)
-        try:
-            self._camera.roi = ROI
-        except:
-            print("Failed to set camera ROI")
+        
+        change_camera_setting(self.image_queue1, self.image_queue2, self._CQ, ROI)
+        
         self.clicks = []
         self.roi_calibrate_on = False
         self.roi_window(text="ROI calibrated")
@@ -634,7 +652,7 @@ class LiveViewCanvas(tk.Canvas):
         self.spatial_menu = tk.Toplevel()
         self.spatial_menu.iconbitmap(f'{icon_path}')
         self.spatial_menu.title("Spatial Calibration")
-        #self.spatial_menu.geometry("220x100")
+
         enter_dist = tk.Text(self.spatial_menu, height=1, width=8)
         enter_dist.grid(column=1, row=1)
         query = tk.Label(self.spatial_menu, text="Reference distance (mm): ").grid(column=0, row=1)

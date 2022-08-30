@@ -1,1 +1,1 @@
-{"roi_left": [557, 554, 745, 725], "roi_right": [557, 554, 745, 725], "pixels_per_mm": 55.00909015790027, "tick_dist": 1.0, "cmaps": {"Raw": ["Reds", "Blues"], "DOCP": "seismic", "g_em": "seismic"}}
+{"roi_left": [583, 614, 628, 665], "roi_right": [583, 614, 628, 665], "pixels_per_mm": 44.01136216933077, "tick_dist": 1.0, "cmaps": {"Raw": ["Reds", "Blues"], "DOCP": "seismic_r", "g_em": "seismic_r"}}

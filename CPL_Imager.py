@@ -151,19 +151,9 @@ class Compact_CPL_Imager(CPL_Imager_One_Camera):
     polarizer on a rotating mount. Takes image every 0.2 seconds in alteranting
     polarizations.
 
-    TODO: 
-    5) J/M want four views on screen at once: LCPL, RCPL, dA and CD (which can change
-    to DOCP or G if needed). Sneaky plan: use mode for 4th quadrant, then hstack and
-    vstack so the live view is all 4 pictures! Will require intensity mouseover rethinK?
-    Idea: be very laazy, eliminate the need for modes and just have 4 panels: LCPL, RCPL,
-    dA and CD. Rename all the DOCP stuff (cmap configs etc) to be CD. Adapt colorbar code
-    to put 4 on screen at once, much the same way 2 are put on screen.                                                                   
+    TODO:                                                          
     8) can you measure g_abs by just calibrating to light in w/out sample then putting sample in?      
     9) a proper readme, install script (win+linux+rpi), manual, comments, types?    
-    11) Resolution has gone weird! Stuff now offf the screen. Everything seems shifted by 1 pixel.
-    12) Add indicator if camera and rotator are on or paused (i.e Both->Both on, LCPL/RCPL-> camera on
-        but rotator paused, Paused->Both paused) to menu. Also add toggable overlay that says which pane
-        is which in top right hand corner & move intensity to bottom left.
     13) MAKE SURE YOUR DEFININTION OF WHICH IS IMAGE 1 AND WHICH IS IMAGE 2 IS GOOD THEN ADJUST DA VALUES ACCORDINGLY
     """
 
