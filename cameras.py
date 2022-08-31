@@ -203,30 +203,22 @@ class CompactImageAcquisitionThread(ImageAcquisitionThread):
                 except queue.Empty:
                     pass
                 if self._mode == "Both":
-                    if self._imaging_LCPl is True:
+                    if self._imaging_LCPl is True: #change attribute name as is misleading
                         self._rotator.rotate_to_0()
                         iq = self._image_queue
                     else:
                         self._rotator.rotate_to_90()
                         iq = self._image_queue_2
                     self.get_camera_image(iq, toggle=True)
-                    """
-                    if jog_count == 4:
-                        self._rotator._home_motor()
-                        jog_count = 0
-                    else:
-                        self._rotator.jog_forward()
-                        jog_count += 1
-                    """
                 elif self._mode == "LCPL" or self._mode == "RCPL":
                     if self._mode == "LCPL":
-                        self._rotator.rotate_to_0()
-                        iq_main = self._image_queue
-                        iq_null = self._image_queue_2
-                    else:
                         self._rotator.rotate_to_90()
                         iq_main = self._image_queue_2
                         iq_null = self._image_queue
+                    else:
+                        self._rotator.rotate_to_0()
+                        iq_main = self._image_queue
+                        iq_null = self._image_queue_2
                     self.get_camera_image(iq_main, toggle=False, iq2=iq_null)
                 elif self._mode == "Snap":
                     self._rotator.rotate_to_0()
