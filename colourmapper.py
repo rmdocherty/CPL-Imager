@@ -110,6 +110,7 @@ class ColourMapper():
         cmapped_img2 = self._single_cmap(img2, cmap2)
         
         delta_A = dA(img1, img2) # np.log10(img1/img2)#(img1 - img2)
+        test = img2 - img1
         cmapped_img3 = self._single_cmap(delta_A, cmap3, symm=True)
         theta_mdeg = CD(delta_A) # np.arctan(np.tanh( (np.log(10)*dA) /4 )) * (180*10**3) / np.pi
         cmapped_img4 = self._single_cmap(theta_mdeg, cmap4, symm=True)

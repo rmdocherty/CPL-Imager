@@ -18,11 +18,16 @@ from time import sleep
 from skimage import draw
 import random
 from colourmapper import read_from_json
+from time import sleep
 
 np.random.seed(1)
 IMG_HEIGHT = 360 # can go at least as high as 1000x1000 - don't know what upper limit is!
 IMG_WIDTH = 360
 
+def clearQueue(queue):
+    while not queue.empty():
+        queue.get()
+    return 0
 
 class ImageAcquisitionThread(threading.Thread):
     """
@@ -43,9 +48,10 @@ class ImageAcquisitionThread(threading.Thread):
         self._label = label
 
         self._bit_depth = camera.bit_depth
-        self._camera.image_poll_timeout_ms = 0  # Do not want to block for long periods of time. was 0!!!
+        self._camera.image_poll_timeout_ms = 10  # Do not want to block for long periods of time. was 0!!!
         self._image_queue = queue.Queue(maxsize=2)
         self._stop_event = threading.Event()
+        self._camera.exposure_time_us = 10100 #was 11000 
         self._get_roi_from_file()
 
     def _get_roi_from_file(self):
@@ -129,6 +135,58 @@ class CompactImageAcquisitionThread(ImageAcquisitionThread):
 
     def _rotate_mount(self, degrees):
         self._rotator.rotate_to_angle(degrees)
+    
+    def change_cam_settings(self, ROI=None, exposure_time_us=None):
+        self._camera.disarm()
+        if ROI is not None:
+            self._camera.roi = ROI
+        if exposure_time_us is not None:
+            self._camera.exposure_time_us = exposure_time_us()
+        self._camera.frames_per_trigger_zero_for_unlimited = 0
+        self._camera.arm(2)
+        self._camera.issue_software_trigger()
+
+    def get_camera_image_old(self, iq, toggle=True, iq2=None):
+        try:
+            frame = self._camera.get_pending_frame_or_null()
+            if frame is not None:
+                pil_image = self._get_image(frame)
+                iq.put_nowait(pil_image)
+                if toggle:
+                    self._imaging_LCPl = not self._imaging_LCPl  # toggle bool
+                if iq2 is not None:
+                    null = np.zeros_like(pil_image)
+                    iq2.put_nowait(null)
+        except queue.Full:
+            pass
+        except Exception as error:
+            print("Encountered error: {error}, image acquisition will stop.".format(error=error))
+    
+    def get_camera_image(self, iq, toggle=True, iq2=None, NUM_FRAMES=20):
+        try:
+            
+            images = []
+            for i in range(NUM_FRAMES):
+                frame = self._camera.get_pending_frame_or_null()
+                if frame is not None:
+                    pil_image = self._get_image(frame)
+                    images.append(np.copy(pil_image))
+            averaged = np.mean(images, axis=0)
+            """
+            frame = self._camera.get_pending_frame_or_null()
+            if frame is not None:
+                averaged = self._get_image(frame)
+            """
+            iq.put(averaged, block=True, timeout=0.05)#iq.put_nowait(averaged)
+            if toggle:
+                self._imaging_LCPl = not self._imaging_LCPl  # toggle bool
+            if iq2 is not None:
+                null = np.zeros_like(averaged)
+                iq2.put_nowait(null)
+        except queue.Full:
+            pass
+        except Exception as error:
+            print("Encountered error: {error}, image acquisition will stop.".format(error=error))
 
     def run(self):
         """
@@ -137,52 +195,56 @@ class CompactImageAcquisitionThread(ImageAcquisitionThread):
         Rotate camera & take image. Each time image is taken and put onto queue,
         switch which queue is being used.
         """
-        while not self._stop_event.is_set():
-            try:
-                self._mode = self._control_queue.get_nowait()
-            except queue.Empty:
-                pass
-            if self._mode == "Both":
-                if self._imaging_LCPl is True:
-                    self._rotate_mount(rotator.HORIZONTAL) #motor is horizontal by default and offset by a few degrees. Also 45 -> 90 for some reason so 52 is approx. vertical
-                    iq = self._image_queue
-                else:
-                    self._rotate_mount(rotator.VERTICAL) # approx horizontal due to offset
-                    iq = self._image_queue_2
+        jog_count = 0
+        try:
+            while not self._stop_event.is_set():
                 try:
-                    frame = self._camera.get_pending_frame_or_null()
-                    if frame is not None:
-                        pil_image = self._get_image(frame)
-                        iq.put_nowait(pil_image)
-                        self._imaging_LCPl = not self._imaging_LCPl #toggle bool
-                except queue.Full:
+                    self._mode = self._control_queue.get_nowait()
+                except queue.Empty:
                     pass
-                except Exception as error:
-                    print("Encountered error: {error}, image acquisition will stop.".format(error=error))
-                    break
-            elif self._mode == "LCPL" or self._mode == "RCPL":
-                if self._mode == "LCPL":
-                    self._rotate_mount(rotator.HORIZONTAL) #motor is horizontal by default and offset by a few degrees. Also 45 -> 90 for some reason so 52 is approx. vertical
-                    iq_main = self._image_queue
-                    iq_null = self._image_queue_2
+                if self._mode == "Both":
+                    if self._imaging_LCPl is True: #change attribute name as is misleading
+                        self._rotator.rotate_to_0()
+                        iq = self._image_queue
+                    else:
+                        self._rotator.rotate_to_90()
+                        iq = self._image_queue_2
+                    self.get_camera_image(iq, toggle=True)
+                elif self._mode == "LCPL" or self._mode == "RCPL":
+                    if self._mode == "LCPL":
+                        self._rotator.rotate_to_90()
+                        iq_main = self._image_queue_2
+                        iq_null = self._image_queue
+                    else:
+                        self._rotator.rotate_to_0()
+                        iq_main = self._image_queue
+                        iq_null = self._image_queue_2
+                    self.get_camera_image(iq_main, toggle=False, iq2=iq_null)
+                elif self._mode == "Snap":
+                    self._rotator.rotate_to_0()
+                    iq, iq2 = self._image_queue, self._image_queue_2
+                    self.get_camera_image(iq, toggle=False, iq2=None)
+                    self._rotator.rotate_to_90()
+                    self.get_camera_image(iq2, toggle=False, iq2=None)
+                    #self._mode = "Pause" #reset mode
+                elif self._mode[:3] == "ROI":
+                    roi_strs = self._mode[4:].split(',')
+                    ROI = [int(x) for x in roi_strs]
+                    clearQueue(self._image_queue)
+                    clearQueue(self._image_queue_2)
+                    self.change_cam_settings(ROI=ROI)
+                    self._mode = self._prev_mode
+                elif self._mode == "Pause":
+                    pass
                 else:
-                    self._rotate_mount(rotator.VERTICAL) #motor is horizontal by default and offset by a few degrees. Also 45 -> 90 for some reason so 52 is approx. vertical
-                    iq_main = self._image_queue_2
-                    iq_null = self._image_queue
-                try:
-                    frame = self._camera.get_pending_frame_or_null()
-                    if frame is not None:
-                        np_image = self._get_image(frame)
-                        iq_main.put_nowait(np_image)
-                        null = np.zeros_like(np_image)
-                        iq_null.put_nowait(null)
-                except queue.Full:
                     pass
-            elif self._mode == "Pause":
-                pass
-            else:
-                pass
+                self._prev_mode = self._mode
+        except:
+            self._rotator._home_motor()
+            self._rotator._port.reset_input_buffer()
+            self._rotator._port.reset_output_buffer()
         print("Image acquisition has stopped")
+        #self._rotator._home_motor()
         self._camera.disarm()
         self._camera.dispose()
 
@@ -231,6 +293,7 @@ class MockCamera(threading.Thread):
         self._image_queue = queue.Queue(maxsize=2)
         self._stop_event = threading.Event()
         self._label = label
+        self._control_queue = queue.Queue(maxsize=2)
 
     def get_output_queue(self):
         """Getter method for output queue."""
