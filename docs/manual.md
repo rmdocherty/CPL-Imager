@@ -42,7 +42,7 @@ After that, you're all set!
 The software has 4 panels which show different data. The top two panels show the last readings of LCPL and RCPL intensity taken from the camera. The bottom two show dA and CD, two measures of the differential absorption of LCPL vs RCPL common in the literature. All 4 are colourmapped based on the colourmaps in "config.json"; the values of these colours can be read off the colourbars on the right hand side of the screen, where the colour bar position corresponds to the same data pane (i.e top left colourbar is LCPL).
 
 ## Taking photos:
-Pressing the "Take Photo" button will take a photo of whatever is currently on the GUI screen and save it to a timestamped directory in the "photos" folder. This will contain a bitmap of the image, a .txt, .csv and .npy of the raw LCPL and RCPL data and a file describing the image metadata like any corrections applied or the pixels per mm of the images.
+Pressing the "Take Photo" button will take a photo of whatever is currently on the GUI screen and save it to a timestamped directory in the "photos" folder. This will contain a bitmap of the image, a .txt, .csv and .npy of the raw LCPL and RCPL data and a file describing the image metadata like any corrections applied or the pixels per mm of the images. LCPL data will be the left image and RCPL data will be on the right of the image.
 
 ## Acquisition modes:
 There are 4 possible acquisition modes of the software, available under the "Acquire" dropdown menu:
@@ -57,7 +57,7 @@ Pressing the "Calibrate" button will open a sub-menu with a variety of useful ca
 - Reset ROI: reset camera ROI back to a wide view (1024x1024). Useful for calibrating the ROI later. Note that after any ROI adjustments the program must be restarted for these to take effect.
 - Calibrate ROI: click a point on the screen to act as the top-left corner of the ROI, then a rectangle will appear at the current cursor position showing a bounding box. Click a second point to define the other corner and finish the calbiration.
 - Intensity calibration: a popup will appear telling you the percentage of non-zero pixels in the LCPL or RCPL data that are 1 or above (i.e are saturated). When taking measurements it is preferable to have 0% saturation with as high an intensity as possible; you want to be just below the threshold of saturation.
-- Set threshold: set a threshold intensity value below which any readings will be set to 0. Useful if there's weak stray light.
+- Set threshold: set a threshold intensity value below which any readings will be set to 0. Useful if there's weak stray light. Would recommend using this for calibration or visualising moreso than taking data as any masked data won't be recorded, causing you to miss possible real signals.
 
 ## Overlays:
 These overlays appear over the data panes when toggled on in the menu (and are not saved to the photos):
