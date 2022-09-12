@@ -1,0 +1,37 @@
+STEP 0:
+Clone or download this repo to your computer (I'm assuming this has already been done if you're reading this)
+
+STEP 1:
+Go to https://www.thorlabs.com/software_pages/ViewSoftwarePage.cfm?Code=ThorCam , click the 'Programming Interfaces' tab, then download the right .zip file for your system (*not* the DCx series one). Copy the zip file over to the CPL-Imager folder and extract there.
+
+STEP 2 (WINDOWS):
+Ensure the path to the SDK DLLs is the same as the path found in 'windows_setup.py' - this lets the Thorlabs camera Python library can find them later.
+
+STEP 2 (LINUX):
+*the following text for this step has been reproduced from THORLABS_SDK_INSTALLATION_INSTRUCTIONS.txt*
+Copy (as root) the Camera SDK shared libraries to /usr/local/lib:
+
+- libthorlabs_unified_sdk_main.so
+- libthorlabs_unified_sdk_kernel.so
+- libthorlabs_tsi_usb_driver.so
+- libthorlabs_tsi_cs_camera_device.so
+- libthorlabs_tsi_zelux_camera_device.so
+- libthorlabs_tsi_camera_sdk.so
+
+*added by me*
+This can be done by running the following command in the SDK/Native_Toolkit/bin/Native_xx_lib where xx=32/64
+sudo cp libthorlabs*.so /usr/local/lib
+
+Run the following command (on Ubuntu Linux) to make the libraries available to applications:
+sudo ldconfig -v
+
+Copy the usb.rules file located in the same folder as this document to /etc/udev/rules.d.  If that folder does not exist, please create it.
+
+STEP 3:
+Install the Thorlabs camera Python library in the SDK/Python_Toolkit/ directory via the command line via pip or conda with a command like:
+python.exe -m pip install thorlabs_tsi_camera_python_sdk_package.zip
+
+STEP 4:
+Install the required Python libraries using pip, these being numpy, matplotlib, Pillow and pyserial (if you want to test the 0 camera setup, skimage is also required).
+
+
