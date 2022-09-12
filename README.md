@@ -21,6 +21,7 @@ The instrument consists of a fresnel rhomb (which converts CPL to linearly polar
 Once all the prerequisites described in ``install`` are setup, run ``python CPL_Imager.py`` from this directory to start the software (or run the script in an IDE of your choice). 
 
 The respository structure is as follows:
+- ``build`` contains all the .STL files needed to 3D print the casing (and sample holders) for the camera.
 - ``docs`` contains the manual (inc. instrument assembly instructions) and quick start guide.
 - ``docs/installation.txt`` contains instructions to set up the libraries and dlls needed for both the software and the Thorlabs cameras.
 - ``photos`` is where images taken by the camera are stored, as well as containing some images used by the software (for icons etc)
