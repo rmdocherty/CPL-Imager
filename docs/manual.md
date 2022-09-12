@@ -27,7 +27,7 @@ Abbreviations used:
 
 ## Assembly:
 0) Print all the 3D printed parts found in the 'build' directory of this repo
-1) Place the FR into the 30-60mm TL cage adapter, ensure it is aligned at 45° from the vertical then fix it in place with 2 slip rings. Screw in the 2" rods in. 
+1) Place the FR into the 30-60mm TL cage adapter, ensure it is aligned at 45° from the vertical then fix it in place with 2 slip rings. Screw in the 2" rods in to the 60mm spaced holes, ensuring the rods come in front of the adapter (i.e in the direction of the fresnel rhomb) and are evenly spaced. Leave some amount of the rod behind the adapter so that the adapter is not in direct contact with the rotator when resting on top. 
 2) Place this construction in the 3D printed front body, then screw the setscrews into the ends of rods facing away from the FR.
 3) Place the linear polariser into the ELL14 rotator. Ensure the linear polariser is aligned at 0° to the vertical, even if the rotator casing is slightly angled (every ELL14 has a slightly different home angle, this is accounted for in rotator.py).
 4) Place the ELL14 piezoelectric rotator on the back of the casing such that the setscrews poke through the holes in the rotator.
@@ -40,8 +40,6 @@ Abbreviations used:
 There is an alternate setup with 2 cameras and a polarised beamsplitter (rather than the piezorotator), but this is more expensive and has difficulty in aligning the 2 cameras. However, it has no associated rotator delay so can run with a higher framerate.
 
 ## Software:
-NB: ANY PHOTOS TAKEN BEFORE 30/08/2022 HAVE LCPL AND RCPL FLIPPED IN THE OUTPUT FILES: LCPL WAS IN THE RIGHT ARRAY, RCPL WAS IN THE LEFT ARRAY. THIS HAS NOW BEEN FIXED, AND LCPL DATA IS THE LEFT PANE AND RCPL IS THE RIGHT
-
 These following sections refer to the control software of the CPL-Imager. Certain sections are colour coded to refer to sections of the GUI image. A handy quickstart guide is in the "docs" folder under the filename "quickstart.png", which may be sufficient to understand the software.
 
 
@@ -56,7 +54,7 @@ After that, you're all set!
 The software has 4 panels which show different data. The top two panels show the last readings of LCPL and RCPL intensity taken from the camera. The bottom two show dA and CD, two measures of the differential absorption of LCPL vs RCPL common in the literature. All 4 are colourmapped based on the colourmaps in "config.json"; the values of these colours can be read off the colourbars on the right hand side of the screen, where the colour bar position corresponds to the same data pane (i.e top left colourbar is LCPL).
 
 ## Taking photos:
-Pressing the "Take Photo" button will take a photo of whatever is currently on the GUI screen and save it to a timestamped directory in the "photos" folder. This will contain a bitmap of the image, a .txt, .csv and .npy of the raw LCPL and RCPL data and a file describing the image metadata like any corrections applied or the pixels per mm of the images. LCPL data will be the left image and RCPL data will be on the right of the image.
+Pressing the "Take Photo" button will take a photo of whatever is currently on the GUI screen and save it to a timestamped directory in the "photos" folder. This will contain a bitmap of the image, a .txt, .csv and .npy of the raw LCPL and RCPL data and a file describing the image metadata like any corrections applied or the pixels per mm of the images. LCPL data will be the left image and RCPL data will be on the right of the image (the same holds true for the data files).
 
 ## Acquisition modes:
 There are 4 possible acquisition modes of the software, available under the "Acquire" dropdown menu:
@@ -68,10 +66,10 @@ There are 4 possible acquisition modes of the software, available under the "Acq
 Pressing the "Calibrate" button will open a sub-menu with a variety of useful calibration options:
 - RPS correction: remove any samples in the beam path and set up your source to be a Reference Polarization State i.e a state with a 50:50 mix of LCPL and RCPL and where each intensity reading is just barely saturated. Then enter '1' in both forms and press submit then a correction mask will be generated which adjusts any spots that aren't of value 1. This correction then persists, so will apply when imaging a sample. This is intended to correct errors in the setup like optical abberations.
 - Spatial calibration: click two points on the screen separated by some reference distance, then enter the reference distance in mm into the popup and press 'Finish'. Then the spatial based overlays like ticks, axes and gridlines will automatically adjust to the new scale when toggled on in the 'Overlays' menu.
-- Reset ROI: reset camera ROI back to a wide view (1024x1024). Useful for calibrating the ROI later. Note that after any ROI adjustments the program must be restarted for these to take effect.
+- Reset ROI: reset camera ROI back to a wide view (1024x1024). Useful for calibrating the ROI later.
 - Calibrate ROI: click a point on the screen to act as the top-left corner of the ROI, then a rectangle will appear at the current cursor position showing a bounding box. Click a second point to define the other corner and finish the calbiration.
 - Intensity calibration: a popup will appear telling you the percentage of non-zero pixels in the LCPL or RCPL data that are 1 or above (i.e are saturated). When taking measurements it is preferable to have 0% saturation with as high an intensity as possible; you want to be just below the threshold of saturation.
-- Set threshold: set a threshold intensity value below which any readings will be set to 0. Useful if there's weak stray light. Would recommend using this for calibration or visualising moreso than taking data as any masked data won't be recorded, causing you to miss possible real signals.
+- Set threshold: set a threshold intensity value below which any readings will be set to 0. Useful if there's weak stray light. Would recommend using this for calibration or visualising moreso than taking data as any masked data won't be recorded, causing you to miss possible real signals. Setting a threshold will also cause the colorbars on the right to be reloaded.
 
 ## Overlays:
 These overlays appear over the data panes when toggled on in the menu (and are not saved to the photos):
@@ -83,7 +81,12 @@ These overlays appear over the data panes when toggled on in the menu (and are n
 - Grid: a grid will appear on each pane at the same positions as the axes but across the entire pane.
 
 ## Source code:
+Source code is of course contained in the repo - modify to suit your needs. If you think it's a useful addition, please send a merge request. I have broadly tried to follow a Model-View-Controller framework where possible whilst also respecting the threaded nature of the Thorlabs camera code, but this has caused some rough edges. The came
 
+The programme structure is as follows:
+- CPL_Imager.py: entry point of the program, instantiates the camera, Thorlabs SDK, GUI and live view objects.
+- colourmapper.py: handles the colourmapping for the data panes and the colorbars on the left hand side. Colourmaps based on matplotlib colourmaps and adjusts based on the max and min values on the screen. Also contains the definitions for delta absorbance and circular dichroism, which probably isn't the best place to hold the central equations but que sera.
+- cameras.py: classes for the THorlabs camera, handles the main loop of taking photos, sending the rotate command and dumping photos onto the correct queue.
 
 ## Troubleshooting:
 
