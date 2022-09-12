@@ -1,0 +1,7 @@
+This is, somewhat misleadingly, a physical 'build' folder, containing all the .stl files needed to assemble the casing as described in the manual. 
+The .stl files in this current directory are for the casing, the ones in the 'sample_holder' directory are for sample holders you may wish to print.
+
+Briefly, the circular sample holders are designed to fit in a Thorlabs 30mm cage plate, where the sample is placed in the space between the two plates,
+then two Throlabs slip rings are screwed in either side to keep the thing in place. This cage plate with sample holder can then fit on a post or on the
+cage system - potentially screwed onto the front of the casing. The sample cube is designed to have a cuvette (or thin film holder shaped like a cuvette)
+placed into it. It then sits on a cage system or on a post in the beam path.
