@@ -28,6 +28,7 @@ class Rotator():
     """
 
     def __init__(self, port): #might need to add flushing and setting params
+        self.rot_count = 0
         try:
             #can just use pyserial to interface though may need to download drivers if on windows
             self._port = serial.Serial(port, baudrate=9600) #port='ftdi://ftdi:ft-x:DK0AJJZI/1'
@@ -85,9 +86,9 @@ class Rotator():
 
     def _get_set_angle_string(self, angle):
         """Convert angle to # of pulses and convert that to hex string."""
-        pulses = floor(angle * PULSES_PER_DEGREE) #should i use floor or ceil?
+        pulses = floor(angle * 398.2222222) #should i use floor or ceil?
         int_string = hex(pulses)[2:].zfill(8)
-        #print(int_string)
+        print(angle, int_string)
         return int_string.upper()
 
     def _send_get_status(self):
@@ -110,6 +111,14 @@ class Rotator():
         while rotated is False: #block until device says has rotated to specified angle
             data = self._port.readline()
             if data.decode()[:3] == "0PO": #0PO is return code for sucessful move command
+                angle_str_hex = data.decode()[3:]
+                #print(angle_str_hex)
+                angle_dec = int(angle_str_hex, base=16)
+                if angle_dec > 100000:
+                    angle_dec = -1 * ((2**32) - angle_dec)
+                angle = angle_dec / 398.22222222
+                print(f"{angle}")
+                self.rot_count += 1
                 rotated = True
             else:
                 pass
@@ -124,6 +133,11 @@ class Rotator():
     
     def rotate_to_0(self):
         self._send_command("0ma00000000")
+        self._check_angle()
+        return 0
+    
+    def rotate_to_45(self):
+        self._send_command("0ma00004600")
         self._check_angle()
         return 0
     
@@ -148,13 +162,4 @@ class Rotator():
         self._check_angle()
         return 0
 
-#58 degrees = vertical, 9 = horizontal
-# r = Rotator("/dev/ttyUSB0")
-# r.rotate_to_angle(0)
-# while True:
-#     #r.jog_forward()
-#     r.rotate_to_angle(HORIZONTAL)
-#     sleep(2)
-#     r.rotate_to_angle(VERTICAL)
-#     #r.jog_backward()
-#     sleep(2)
+#58 degrees = vertical, 9 = horizontals

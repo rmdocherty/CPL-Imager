@@ -5,7 +5,6 @@ Created on Fri Jul 30 12:14:46 2021
 
 @author: ronan
 """
-#from thorlabs_tsi_sdk.tl_camera import TLCamera, Frame
 import rotator
 #from helper import clearQueue
 import threading
@@ -97,7 +96,6 @@ class ImageAcquisitionThread(threading.Thread):
                     np_image = self._get_image(frame)
                     self._image_queue.put_nowait(np_image)
             except queue.Full:
-                # No point in keeping this image around when the queue is full, let's skip to the next one
                 pass
             except Exception as error:
                 print("Encountered error: {error}, image acquisition will stop.".format(error=error))
@@ -164,7 +162,6 @@ class CompactImageAcquisitionThread(ImageAcquisitionThread):
     
     def get_camera_image(self, iq, toggle=True, iq2=None, NUM_FRAMES=20):
         try:
-            
             images = []
             for i in range(NUM_FRAMES):
                 frame = self._camera.get_pending_frame_or_null()
@@ -172,12 +169,13 @@ class CompactImageAcquisitionThread(ImageAcquisitionThread):
                     pil_image = self._get_image(frame)
                     images.append(np.copy(pil_image))
             averaged = np.mean(images, axis=0)
+            print(np.mean(averaged), self._imaging_LCPl)
             """
             frame = self._camera.get_pending_frame_or_null()
             if frame is not None:
                 averaged = self._get_image(frame)
             """
-            iq.put(averaged, block=True, timeout=0.05)#iq.put_nowait(averaged)
+            iq.put_nowait(averaged)#iq.put_nowait(averaged) #, block=True, timeout=0.05
             if toggle:
                 self._imaging_LCPl = not self._imaging_LCPl  # toggle bool
             if iq2 is not None:
@@ -210,6 +208,7 @@ class CompactImageAcquisitionThread(ImageAcquisitionThread):
                         self._rotator.rotate_to_90()
                         iq = self._image_queue_2
                     self.get_camera_image(iq, toggle=True)
+                    
                 elif self._mode == "LCPL" or self._mode == "RCPL":
                     if self._mode == "LCPL":
                         self._rotator.rotate_to_90()
@@ -239,12 +238,14 @@ class CompactImageAcquisitionThread(ImageAcquisitionThread):
                 else:
                     pass
                 self._prev_mode = self._mode
-        except:
+        except: #close everything gracefully in case of error
+            self._camera.disarm()
+            self._camera.dispose()
             self._rotator._home_motor()
             self._rotator._port.reset_input_buffer()
             self._rotator._port.reset_output_buffer()
+            self._rotator._port.close()
         print("Image acquisition has stopped")
-        #self._rotator._home_motor()
         self._camera.disarm()
         self._camera.dispose()
 

@@ -150,6 +150,7 @@ class CPL_Viewer(tk.Frame):
             self.rotator_icon.pause()
             self.camera_icon.on()
         elif mode == "Pause":
+            print("Pause")
             self.rotator_icon.pause()
             self.camera_icon.pause()
         elif mode == "Both":
@@ -460,6 +461,8 @@ class LiveViewCanvas(tk.Canvas):
                 self._image_width = self._image.width()
                 self._image_height = self._image.height()  #remove this scaling later!
                 self.config(width=self._image_width, height=self._image_height)
+            clearQueue(self.image_queue1)
+            clearQueue(self.image_queue2)
             return image1, image2
         except queue.Empty:
             return None, None
