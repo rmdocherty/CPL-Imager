@@ -114,7 +114,6 @@ class ColourMapper():
         cmapped_img3 = self._single_cmap(delta_A, cmap3, symm=True)
         theta_mdeg = CD(delta_A) # np.arctan(np.tanh( (np.log(10)*dA) /4 )) * (180*10**3) / np.pi
         cmapped_img4 = self._single_cmap(theta_mdeg, cmap4, symm=True)
-        print(np.mean(theta_mdeg))
         top = np.hstack((cmapped_img1, cmapped_img2))
         bot = np.hstack((cmapped_img3, cmapped_img4))
         mapped = np.vstack((top, bot))

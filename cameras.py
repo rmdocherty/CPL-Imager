@@ -6,6 +6,7 @@ Created on Fri Jul 30 12:14:46 2021
 @author: ronan
 """
 import rotator
+import serial
 #from helper import clearQueue
 import threading
 
@@ -14,7 +15,10 @@ import numpy as np
 from sys import platform
 import json
 from time import sleep
-from skimage import draw
+try:
+    from skimage import draw
+except ImportError:
+    print("Couldn't import skimage, 0 camera demo will not work.")
 import random
 from colourmapper import read_from_json
 from time import sleep
@@ -57,9 +61,6 @@ class ImageAcquisitionThread(threading.Thread):
         """Grab corresponding (left or right) ROI config from the file, else
         use defaults."""
         try:
-            """with open("config.json", "r") as config_file:
-                config_json = json.load(config_file)
-                coords = config_json["roi_"+self._label]"""
             coords = read_from_json("roi_"+self._label)
             ROI = (coords[0], coords[1], coords[2], coords[3])
             print(f"Setting ROI as {ROI}")
@@ -120,11 +121,22 @@ class CompactImageAcquisitionThread(ImageAcquisitionThread):
         self._image_queue = queue.Queue(maxsize=1)
         self._image_queue_2 = queue.Queue(maxsize=1)
         if platform == "linux" or platform == "linux2":
-            port = "/dev/ttyUSB0"
+            port = "/dev/ttyUSB"
         else:
-            port = "COM3"
-        self._rotator = rotator.Rotator(port) #was /dev/ttyUSB0
-        self._mode = "Both"#"Live"
+            port = "COM"
+        connected_rot = False
+        for i in range(0, 4):
+            try: # try all diff com/usb ports for rotator
+                if connected_rot is False:
+                    port_n = port + str(i)
+                    test_port = serial.Serial(port_n, baudrate=9600)
+                    connected_rot = True
+            except:
+                pass
+        if connected_rot is False:
+            raise Exception("No rotator!")
+        self._rotator = rotator.Rotator(test_port)
+        self._mode = "Both"
         self._control_queue = queue.Queue(maxsize=2)
 
     def get_output_queue_2(self):
@@ -159,7 +171,7 @@ class CompactImageAcquisitionThread(ImageAcquisitionThread):
             pass
         except Exception as error:
             print("Encountered error: {error}, image acquisition will stop.".format(error=error))
-    
+
     def get_camera_image(self, iq, toggle=True, iq2=None, NUM_FRAMES=20):
         try:
             images = []
@@ -169,12 +181,6 @@ class CompactImageAcquisitionThread(ImageAcquisitionThread):
                     pil_image = self._get_image(frame)
                     images.append(np.copy(pil_image))
             averaged = np.mean(images, axis=0)
-            print(np.mean(averaged), self._imaging_LCPl)
-            """
-            frame = self._camera.get_pending_frame_or_null()
-            if frame is not None:
-                averaged = self._get_image(frame)
-            """
             iq.put_nowait(averaged)#iq.put_nowait(averaged) #, block=True, timeout=0.05
             if toggle:
                 self._imaging_LCPl = not self._imaging_LCPl  # toggle bool
@@ -193,7 +199,6 @@ class CompactImageAcquisitionThread(ImageAcquisitionThread):
         Rotate camera & take image. Each time image is taken and put onto queue,
         switch which queue is being used.
         """
-        jog_count = 0
         try:
             while not self._stop_event.is_set():
                 try:

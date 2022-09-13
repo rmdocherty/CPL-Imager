@@ -29,9 +29,14 @@ class Rotator():
 
     def __init__(self, port): #might need to add flushing and setting params
         self.rot_count = 0
+        connected = False
         try:
             #can just use pyserial to interface though may need to download drivers if on windows
-            self._port = serial.Serial(port, baudrate=9600) #port='ftdi://ftdi:ft-x:DK0AJJZI/1'
+            self._port = port #serial.Serial(port, baudrate=9600) #port='ftdi://ftdi:ft-x:DK0AJJZI/1'
+            connected = True
+        except Exception as error:
+            print(f"Error: {error}, please supply a port.")
+        if connected:
             sleep(0.05)
             self._port.reset_input_buffer()
             self._port.reset_output_buffer()
@@ -39,8 +44,6 @@ class Rotator():
             self._home_motor() #reset pos
             self.set_jog_90()
             #self.rotate_to_angle(HORIZONTAL) #reset pos
-        except Exception as error:
-            print(f"Error: {error}, please supply a port.")
 
     def _send_command(self, command, data=""):
         """
@@ -161,5 +164,3 @@ class Rotator():
         self._send_command("0mr", data=set_angle_str)
         self._check_angle()
         return 0
-
-#58 degrees = vertical, 9 = horizontals

@@ -152,14 +152,12 @@ class Compact_CPL_Imager(CPL_Imager_One_Camera):
     polarizations.
 
     TODO:                                                          
-    8) can you measure g_abs by just calibrating to light in w/out sample then putting sample in?      
-    9) a proper readme, install script (win+linux+rpi), manual, comments, types?    
-    13) MAKE SURE YOUR DEFININTION OF WHICH IS IMAGE 1 AND WHICH IS IMAGE 2 IS GOOD THEN ADJUST DA VALUES ACCORDINGLY
+    8) can you measure g_abs by just calibrating to light in w/out sample then putting sample in?          
     """
 
     def run(self):
         """Grab all available cameras and pass them into the main function."""
-        self._camera_handedness = "LCPL" #assumes it starts w/ LCPL
+        self._camera_handedness = "LCPL"
         with TLCameraSDK() as sdk:
             camera_list = sdk.discover_available_cameras()
             with sdk.open_camera(camera_list[0]) as cam:

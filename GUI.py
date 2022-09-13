@@ -119,7 +119,7 @@ class CPL_Viewer(tk.Frame):
     def _switch_to_DOCP(self):
         self._camera_widget.set_cmap_mode("DOCP")
     def _switch_to_g_em(self):
-        self._camera_widget.set_cmap_mode("g_em") #was g_em
+        self._camera_widget.set_cmap_mode("g_em")
     def switch(self, mode):
         if mode == "raw":
             self._switch_to_raw()
@@ -412,7 +412,6 @@ class LiveViewCanvas(tk.Canvas):
         """Setter for the Cmap mode."""
         self._mode = mode
         self._cmap.set_mode(mode)
-        #print(self._img_data)
     def set_cmaps(self, cmap_list):
         self._cmap.set_cmaps(cmap_list)
     
