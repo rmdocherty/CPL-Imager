@@ -120,7 +120,7 @@ class Rotator():
                 if angle_dec > 100000:
                     angle_dec = -1 * ((2**32) - angle_dec)
                 angle = angle_dec / 398.22222222
-                print(f"{angle}")
+                #print(f"{angle}")
                 self.rot_count += 1
                 rotated = True
             else:

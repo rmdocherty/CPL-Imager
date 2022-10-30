@@ -6,11 +6,13 @@ Created on Fri Jul 30 10:51:34 2021
 @author: ronan
 """
 
-
+import queue, socket, pickle
+import threading
 from thorlabs_tsi_sdk.tl_camera import TLCameraSDK
-from cameras import ImageAcquisitionThread, CompactImageAcquisitionThread, MockCamera
+from cameras import ImageAcquisitionThread, CompactImageAcquisitionThread, MockCamera, threaded, HybridIAT
 from GUI import CPL_Viewer, LiveViewCanvas, platform, file_sep, icon_path
 import tkinter as tk
+import numpy as np
 
 
 if platform == "linux" or platform == "linux2":
@@ -188,6 +190,60 @@ class Compact_CPL_Imager(CPL_Imager_One_Camera):
         print("Closing resources...")
 
 
+class ComputerSocket:
+    def __init__(self, ip, port):
+        self._image_queue_1 = queue.Queue(maxsize=1)
+        self._image_queue_2 = queue.Queue(maxsize=1)
+        self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        try:
+            self.s.connect((ip, port))
+            self.connected = True
+            #self.s.listen()
+        except:
+            print("Error when opening, closing socket")
+            self.s.close()
+    def put(self, item): #act as a queue
+        #obj = {"type": "control", "data": item}
+        self.write_obj(item)
+    def write_obj(self, obj):
+        self.s.send(obj.encode())
+        #send_data(obj)
+    def close(self):
+        self.s.close()
+
+    def listen(self):
+        while self.connected == True:
+            try:
+                byte = self.s.recv(8388608)
+                msg = pickle.loads(byte)
+                if msg:
+                    if self.msg['Name'] == "LCPL":
+                        self._image_queue_2.put(np.frombuffer(msg['data']))
+                    else:
+                        self._image_queue_1.put(np.frombuffer(msg['data']))
+            except EOFError:
+                print('radn out of input')
+
+class CPL_Imager_Hybrid(Compact_CPL_Imager):
+    def run(self):
+        """Grab all available cameras and pass them into the main function."""
+        self._camera_handedness = "LCPL"
+        self._main_function()
+    def _main_function(self):
+        local_IAT = ComputerSocket("169.254.234.142", 50001)
+        camera_widget = self._gen_widget(local_IAT._image_queue_1,
+                                         local_IAT._image_queue_2)
+        self._GUI.set_camera_widget(camera_widget)
+        self._GUI.set_control_queue(local_IAT)
+        network_thr = threading.Thread(target=local_IAT.listen)
+        print("Viewer starting")
+        network_thr.start()
+        self._root.mainloop()
+        local_IAT.close()
+        network_thr.join()
+        print("Closing resources...")
+
+
 class CPL_Imager_No_Camera(CPL_Imager):
     """
     CPL_Imager_No_Camera.
@@ -207,7 +263,7 @@ class CPL_Imager_No_Camera(CPL_Imager):
         cam2 = MockCamera(label="right")
         self._main_function(cam1, cam2)
 
-
+mode = "hybrid"
 if __name__ == "__main__":
     with TLCameraSDK() as sdk:
         camera_list = sdk.discover_available_cameras()
@@ -217,7 +273,11 @@ if __name__ == "__main__":
         elif len(camera_list) == 1: #compact design
             imager = Compact_CPL_Imager()
         elif len(camera_list) == 0:
-            imager = CPL_Imager_No_Camera()
+            if mode =='hybrid':
+                imager = CPL_Imager_Hybrid()
+            else:
+                imager = CPL_Imager_No_Camera()
         else:
             raise Exception("Too many cameras!")
+            
     imager.run()

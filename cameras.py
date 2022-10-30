@@ -7,8 +7,11 @@ Created on Fri Jul 30 12:14:46 2021
 """
 import rotator
 import serial
-#from helper import clearQueue
 import threading
+import socket
+import pickle
+from functools import wraps
+from thorlabs_tsi_sdk.tl_camera import TLCameraSDK
 
 import queue
 import numpy as np
@@ -26,6 +29,19 @@ from time import sleep
 np.random.seed(1)
 IMG_HEIGHT = 360 # can go at least as high as 1000x1000 - don't know what upper limit is!
 IMG_WIDTH = 360
+
+
+def threaded(f): #maybe there is problem here - all the extrea threads never close
+    """
+    Execute the given function or method in another thread
+    """
+    @wraps(f)
+    def wrapper(*args, **kwargs):
+        thr = threading.Thread(target=f, args=args, kwargs=kwargs, daemon=True)
+        #thr.isDaemon(True)
+        thr.start()
+    return wrapper
+
 
 def clearQueue(queue):
     while not queue.empty():
@@ -120,6 +136,11 @@ class CompactImageAcquisitionThread(ImageAcquisitionThread):
         self._imaging_LCPl = True
         self._image_queue = queue.Queue(maxsize=1)
         self._image_queue_2 = queue.Queue(maxsize=1)
+        self._rotator = self.connect_to_rotator()
+        self._mode = "Both"
+        self._control_queue = queue.Queue(maxsize=2)
+
+    def connect_to_rotator(self):
         if platform == "linux" or platform == "linux2":
             port = "/dev/ttyUSB"
         else:
@@ -135,9 +156,7 @@ class CompactImageAcquisitionThread(ImageAcquisitionThread):
                 pass
         if connected_rot is False:
             raise Exception("No rotator!")
-        self._rotator = rotator.Rotator(test_port)
-        self._mode = "Both"
-        self._control_queue = queue.Queue(maxsize=2)
+        return rotator.Rotator(test_port)
 
     def get_output_queue_2(self):
         """Getter for the queue object."""
@@ -257,6 +276,56 @@ class CompactImageAcquisitionThread(ImageAcquisitionThread):
     def stop(self):
         """Stop thread object."""
         self._stop_event.set()
+
+
+class NetworkImageQueue(queue.Queue):
+    def __init__(self, maxsize, name, socket):
+        super(maxsize)
+        self.name = name
+        self.socket = socket
+    def put_nowait(self, item):
+        obj = {"type": self.name, "data": item}
+        self.socket.write_obj(obj)
+
+class RpiSocket:
+    def __init__(self, port, control_queue):
+        self.s = socket.socket(socket.AF_NET, socket.SOCK_STREAM)
+        self.s.bind(('', port))
+        self.s.listen()
+        self.comm, self.addr = self.s.accept()
+    def write_obj(self, obj):
+        byte = pickle.dumps(obj)
+        data_size = len(byte, -1)
+        #self.s.send(data_size)
+        self.s.send(byte)
+        #send_data(obj)
+    @threaded
+    def listen(self):
+        while True:
+            msg = self.s.recv(1024)
+            if msg:
+                self.control_queue.put(msg.decode())
+
+class HybridIAT(CompactImageAcquisitionThread):
+    def __init__(self, align=True):
+        with TLCameraSDK() as sdk:
+            camera_list = sdk.discover_available_cameras()
+            with sdk.open_camera(camera_list[0]) as cam:
+                camera = cam
+        super().__init__(camera)
+        self._imaging_LCPl = True
+        
+        self._rotator = self.connect_to_rotator()
+        self._mode = "Both"
+        self._control_queue = queue.Queue(maxsize=2)
+        self.socket = RpiSocket("169.254.199.3", 50001, self._control_queue)
+        self._image_queue = NetworkImageQueue(1, "RCPL", self.socket)
+        self._image_queue_2 = NetworkImageQueue(1, "LCPL", self.socket)
+        
+        self.camera = cam
+        self.camera.frames_per_trigger_zero_for_unlimited = 0
+        self.camera.arm(2)
+        self.camera.issue_software_trigger()
 
 
 def make_circle(arr, radius=120, val=0.5):
