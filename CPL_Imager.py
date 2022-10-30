@@ -263,7 +263,7 @@ class CPL_Imager_No_Camera(CPL_Imager):
         cam2 = MockCamera(label="right")
         self._main_function(cam1, cam2)
 
-mode = "hybrid"
+mode = "normal"
 if __name__ == "__main__":
     with TLCameraSDK() as sdk:
         camera_list = sdk.discover_available_cameras()
